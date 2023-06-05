@@ -2,7 +2,7 @@
 
 # Villa
 
-_✨ 米游社大别野 Python SDK ✨_
+_✨ 米游社大别野Bot Python SDK ✨_
 
 </div>
 
@@ -10,7 +10,7 @@ _✨ 米游社大别野 Python SDK ✨_
 
 开发ing...
 
-可通过`pip install git+https://github.com/CMHopeSunshine/PyVilla.git@main` 安装使用。
+可通过`pip install git+https://github.com/CMHopeSunshine/villa-py.git@main` 安装使用。
 
 ## 使用示例
 
@@ -35,4 +35,4 @@ if __name__ == "__main__":
 
 - [ ] 富文本消息
 - [ ] API补全
-- [ ] 跟便捷的消息处理方法
+- [ ] 更便捷的消息处理方法
