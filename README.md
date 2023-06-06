@@ -4,6 +4,10 @@
 
 _✨ 米游社大别野Bot Python SDK ✨_
 
+<img src="https://img.shields.io/pypi/v/villa-py" alt="version">
+<img src="https://img.shields.io/badge/Python-3.8+-yellow" alt="python">
+<a href="https://cdn.jsdelivr.net/gh/CMHopeSunshine/villa-py@master/LICENSE"><img src="https://img.shields.io/github/license/CMHopeSunshine/villa-py" alt="license"></a>
+
 </div>
 
 ## 特性
