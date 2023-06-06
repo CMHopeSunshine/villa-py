@@ -54,3 +54,12 @@ if __name__ == "__main__":
 ## 反馈
 
 目前无论是大别野Bot还是本SDK都在测试开发中，如遇问题请提出issue，感谢支持！
+
+## 相关项目
+
+- [NoneBot2](https://github.com/nonebot/nonebot2) 非常好用的Python跨平台机器人框架！
+- [nonebot-adapter-villa](https://github.com/CMHopeSunshine/nonebot-adapter-villa) NoneBot2的大别野Bot适配器。
+
+推荐有成熟Python开发经验但对NoneBot2不熟悉的小伙伴选择`本SDK`，
+
+对NoneBot2熟悉或希望接触更成熟的生态的小伙伴选择`NoneBot2+Villa适配器`进行开发。
