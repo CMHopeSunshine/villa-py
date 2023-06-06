@@ -28,6 +28,7 @@ class LoguruHandler(logging.Handler):
             level, record.getMessage()
         )
 
+
 def default_filter(record: "Record"):
     """默认的日志过滤器，根据 `config.log_level` 配置改变日志等级。"""
     log_level = record["extra"].get("villa_log_level", "INFO")
@@ -39,13 +40,13 @@ default_format: str = (
     "<g>{time:MM-DD HH:mm:ss}</g> "
     "[<lvl>{level}</lvl>] "
     "<c><u>{name}</u></c> | "
-    # "<c>{function}:{line}</c>| "
     "{message}"
 )
 """默认日志格式"""
 
+
 def _log_patcher(record: "loguru.Record"):
-    record["name"] = record["name"].split(".")[0]
+    record["name"] = record["name"].split(".")[0]  # type: ignore
 
 
 logger.remove()

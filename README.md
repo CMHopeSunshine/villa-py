@@ -6,33 +6,51 @@ _✨ 米游社大别野Bot Python SDK ✨_
 
 </div>
 
-## 说明
+## 特性
 
-开发ing...
+- 基于`FastAPI`，异步、快速、高性能！
+- 便捷的消息构造和发送方法
+- 完整的消息段和API支持
+- ~~想不出来了~~
 
-可通过`pip install git+https://github.com/CMHopeSunshine/villa-py.git@main` 安装使用。
+## 安装
 
-## 使用示例
+- 使用pip: `pip install villa`
+- 使用poetry: `poetry add villa`
+- 使用pdm: `pdm add villa`
+
+## 快速开始
+
+首先你需要一个米游社大别野的Bot，如果没有请先自行申请，拿到`bot_id`、`bot_secret`
 
 ```python
-from villa import Bot, SendMessageEvent
-
+from villa import Bot
+from villa.event import SendMessageEvent
 
 bot = Bot(bot_id="your_bot_id", bot_secret="your_bot_secret", callback_url="your_callback_url")
+# 初始化Bot，填写你的bot_id、密钥以及回调地址
 
-@bot.on_message()
-async def handler(bot: Bot, event: SendMessageEvent):
-    if "hello" in event.content.content.text:
-        await bot.send_msg(event.villa_id, event.room_id, "world")  # 暂时只支持纯文本
+@bot.on_startswith("hello")
+async def handler(event: SendMessageEvent):
+    await event.send("world!")
+    # 一个简单的处理函数，向你的Bot发送`@Bot hello`，它将会回复你`world`！
 
 
 if __name__ == "__main__":
-    bot.run()
+    bot.run(host="127.0.0.1", port=13350)
+    # 启动bot，注意，port端口号要和你的回调地址对上
 ```
-向你的Bot发送`@Bot hello`，它将会回复你`world`！
 
-## 进度
 
-- [ ] 富文本消息
-- [ ] API补全
-- [ ] 更便捷的消息处理方法
+## 使用说明
+
+详见`example`文件夹：
+- `single_bot.py`: 单Bot运行
+- `multiple_bots.py`: 多Bot运行
+- `handle_func.py`: 各种处理器介绍
+- `send_message.py`: 各种消息发送方法介绍
+
+
+## 反馈
+
+目前无论是大别野Bot还是本SDK都在测试开发中，如遇问题请提出issue，感谢支持！

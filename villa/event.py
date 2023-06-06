@@ -1,9 +1,12 @@
 import json
 from enum import IntEnum
-from typing import Any, Dict, Type, Optional
+from typing import Any, Dict, Type, Union, Optional
 
-from pydantic import BaseModel, validator
+from pydantic import Extra, BaseModel, validator
+
+from .store import _bots
 from .models import MessageContentInfo
+from .message import Message, MessageSegment
 
 
 class EventType(IntEnum):
@@ -33,6 +36,9 @@ class Event(BaseModel):
 
     __type__: EventType
 
+    class Config:
+        extra = Extra.allow
+
 
 class JoinVillaEvent(Event):
     """新用户加入大别野事件
@@ -46,7 +52,6 @@ class JoinVillaEvent(Event):
     """用户昵称"""
     join_at: int
     """用户加入时间的时间戳"""
-
 
 
 class SendMessageEvent(Event):
@@ -74,12 +79,39 @@ class SendMessageEvent(Event):
 
     villa_id: int
     """大别野ID"""
+    bot_id: str
+    """机器人ID"""
 
     @validator("content", pre=True)
     def _content_str_to_dict(cls, v: Any):
         if isinstance(v, str):
             return json.loads(v)
         return v
+
+    @property
+    def message(self) -> Message:
+        if not hasattr(self, "_message"):
+            setattr(self, "_message", Message._parse(self.content, self.villa_id))
+        return getattr(self, "_message")
+
+    async def send(
+        self,
+        message: Union[str, MessageSegment, Message],
+        mention_sender: bool = False,
+        quote_message: bool = False,
+    ) -> str:
+        """回复消息"""
+        if not (bot := _bots.get(self.bot_id)):
+            raise ValueError("bot not found")
+        if isinstance(message, (str, MessageSegment)):
+            message = Message(message)
+        if mention_sender:
+            message.insert(
+                0, MessageSegment.mention_user(self.from_user_id, self.villa_id)
+            )
+        if quote_message:
+            message.append(MessageSegment.quote(self.msg_uid, self.send_at))
+        return await bot.send(self.villa_id, self.room_id, message)
 
 
 class CreateRobotEvent(Event):
@@ -154,15 +186,12 @@ event_classes: Dict[int, Type[Event]] = {
     EventType.CreateRobot.value: CreateRobotEvent,
     EventType.DeleteRobot.value: DeleteRobotEvent,
     EventType.AddQuickEmoticon.value: AddQuickEmoticonEvent,
-    EventType.AuditCallback.value: AuditCallbackEvent
+    EventType.AuditCallback.value: AuditCallbackEvent,
 }
-
 
 
 __all__ = [
     "Event",
-    "NoticeEvent",
-    "MessageEvent",
     "JoinVillaEvent",
     "SendMessageEvent",
     "CreateRobotEvent",
