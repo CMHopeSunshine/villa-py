@@ -33,7 +33,7 @@ class MessageSegment(ABC, BaseModel):
         return Text(content=text)
 
     @staticmethod
-    def mention_robot(bot_id: str, bot_name: Optional[str] = None) -> "MentionRobot":
+    def mention_robot(bot_id: str, bot_name: str) -> "MentionRobot":
         return MentionRobot(bot_id=bot_id, bot_name=bot_name)
 
     @staticmethod
@@ -41,8 +41,8 @@ class MessageSegment(ABC, BaseModel):
         return MentionUser(villa_id=villa_id, user_id=user_id)
 
     @staticmethod
-    def mention_all() -> "MentionAll":
-        return MentionAll()
+    def mention_all(show_text: str = "全体成员") -> "MentionAll":
+        return MentionAll(show_text=show_text)
 
     @staticmethod
     def room_link(villa_id: int, room_id: int) -> "RoomLink":
@@ -99,7 +99,7 @@ class MentionRobot(MessageSegment):
 
     type: Literal["mention_robot"] = "mention_robot"
     bot_id: str
-    bot_name: Optional[str] = None
+    bot_name: str
 
 
 class MentionUser(MessageSegment):
@@ -114,6 +114,7 @@ class MentionAll(MessageSegment):
     """@全体成员消息段"""
 
     type: Literal["mention_all"] = "mention_all"
+    show_text: str = "全体成员"
 
 
 class RoomLink(MessageSegment):
@@ -220,7 +221,7 @@ class Message(BaseModel):
         self.__root__.append(MentionAll())
         return self
 
-    def mention_robot(self, bot_id: str, bot_name: Optional[str] = None) -> Self:
+    def mention_robot(self, bot_id: str, bot_name: str) -> Self:
         """提及(@at)机器人消息
 
         参数:
@@ -330,41 +331,6 @@ class Message(BaseModel):
         if isinstance(segment, str):
             segment = Text(content=segment)
         self.__root__.append(segment)
-
-    @classmethod
-    def _parse(cls, content: MessageContentInfo, villa_id: int) -> Self:
-        msg = cls()
-        text = content.content.text
-        text_begin = 0
-        for entity in content.content.entities:
-            if isinstance(entity.entity, MentionedRobotInfo):
-                msg.mention_robot(entity.entity.bot_id)
-            elif isinstance(entity.entity, MentionedUserInfo):
-                msg.mention_user(villa_id, int(entity.entity.user_id))
-            elif isinstance(entity.entity, MentionedAllInfo):
-                msg.mention_all()
-            elif isinstance(entity.entity, VillaRoomLinkInfo):
-                msg.room_link(int(entity.entity.villa_id), int(entity.entity.room_id))
-            elif isinstance(entity.entity, LinkInfo):
-                msg.link(entity.entity.url, entity.entity.url)
-            if text_sengment := text[text_begin : entity.offset]:
-                msg.text(text_sengment)
-            text = text[(entity.offset + entity.length) :]
-        if text:
-            msg.text(text)
-        if content.content.images:
-            for image in content.content.images:
-                msg.image(
-                    image.url,
-                    image.size.width if image.size else None,
-                    image.size.height if image.size else None,
-                    image.file_size,
-                )
-        if content.quote:
-            msg.quote(
-                content.quote.quoted_message_id, content.quote.quoted_message_send_time
-            )
-        return msg
 
     def plain_text(self) -> str:
         """获取纯文本消息内容"""
@@ -625,9 +591,9 @@ class Message(BaseModel):
             if arg2 is None:
                 return Message([seg for seg in self.__root__ if seg.type == arg1])
             elif isinstance(arg2, int):
-                if l := [seg for seg in self.__root__ if seg.type == arg1]:
-                    return l[arg2]
-                else:
+                try:
+                    return [seg for seg in self.__root__ if seg.type == arg1][arg2]
+                except IndexError:
                     return None
             elif isinstance(arg2, slice):
                 return Message([seg for seg in self.__root__ if seg.type == arg1][arg2])

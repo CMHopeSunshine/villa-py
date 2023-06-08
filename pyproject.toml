@@ -1,10 +1,14 @@
 [tool.poetry]
 name = "villa"
-version = "0.1.0"
+version = "0.1.1"
 description = "米游社大别野Bot Python SDK。MiHoYo Villa Bot Python SDK."
 authors = ["CMHopeSunshine <277073121@qq.com>"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/CMHopeSunshine/villa-py"
+repository = "https://github.com/CMHopeSunshine/villa-py"
+documentation = "https://github.com/CMHopeSunshine/villa-py"
+keywords = ["mihoyo", "bot", "villa"]
 
 [tool.poetry.dependencies]
 python = "^3.8"

@@ -52,6 +52,14 @@ class Payload(BaseModel):
         if values.get("type") == 2 and "SendMessage" in values.get(
             "extend_data", {}
         ).get("EventData", {}):
+            if isinstance(
+                values["extend_data"]["EventData"]["SendMessage"]["content"], str
+            ):
+                values["extend_data"]["EventData"]["SendMessage"][
+                    "content"
+                ] = json.loads(
+                    values["extend_data"]["EventData"]["SendMessage"]["content"]
+                )
             if (
                 "villa_id" in values.get("robot", {})
                 and "villa_id" not in values["extend_data"]["EventData"]["SendMessage"]
@@ -132,14 +140,20 @@ class MentionedRobot(BaseModel):
     type: Literal["mentioned_robot"] = "mentioned_robot"
     bot_id: str
 
+    bot_name: str = Field(exclude=True)
+
 
 class MentionedUser(BaseModel):
     type: Literal["mentioned_user"] = "mentioned_user"
     user_id: str
 
+    user_name: str = Field(exclude=True)
+
 
 class MentionedAll(BaseModel):
     type: Literal["mention_all"] = "mention_all"
+
+    show_text: str = Field(exclude=True)
 
 
 class VillaRoomLink(BaseModel):
@@ -147,10 +161,14 @@ class VillaRoomLink(BaseModel):
     villa_id: str
     room_id: str
 
+    room_name: str = Field(exclude=True)
+
 
 class Link(BaseModel):
     type: Literal["link"] = "link"
     url: str
+
+    show_text: str = Field(exclude=True)
 
 
 class TextEntity(BaseModel):

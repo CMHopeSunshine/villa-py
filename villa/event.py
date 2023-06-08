@@ -1,8 +1,7 @@
-import json
 from enum import IntEnum
-from typing import Any, Dict, Type, Union, Optional
+from typing import Dict, Type, Union, Optional
 
-from pydantic import Extra, BaseModel, validator
+from pydantic import Extra, BaseModel, root_validator
 
 from .store import _bots
 from .models import MessageContentInfo
@@ -81,18 +80,80 @@ class SendMessageEvent(Event):
     """大别野ID"""
     bot_id: str
     """机器人ID"""
+    message: Message
+    """事件消息"""
 
-    @validator("content", pre=True)
-    def _content_str_to_dict(cls, v: Any):
-        if isinstance(v, str):
-            return json.loads(v)
-        return v
+    @root_validator(pre=True)
+    def _(cls, data: dict):
+        msg = Message()
+        msg_content_info = data["content"]
+        if quote := msg_content_info.get("quote"):
+            msg.append(
+                MessageSegment.quote(
+                    message_id=quote["quoted_message_id"],
+                    message_send_time=quote["quoted_message_send_time"],
+                )
+            )
 
-    @property
-    def message(self) -> Message:
-        if not hasattr(self, "_message"):
-            setattr(self, "_message", Message._parse(self.content, self.villa_id))
-        return getattr(self, "_message")
+        content = msg_content_info["content"]
+        text = content["text"]
+        entities = content["entities"]
+        if not entities:
+            return Message(MessageSegment.text(text))
+        text = text.encode("utf-16")
+        last_offset: int = 0
+        last_length: int = 0
+        for entity in entities:
+            end_offset: int = last_offset + last_length
+            offset: int = entity["offset"]
+            length: int = entity["length"]
+            entity_detail = entity["entity"]
+            if offset != end_offset:
+                msg.append(
+                    MessageSegment.text(
+                        text[((end_offset + 1) * 2) : ((offset + 1) * 2)].decode(
+                            "utf-16"
+                        )
+                    )
+                )
+            entity_text = text[(offset + 1) * 2 : (offset + length + 1) * 2].decode(
+                "utf-16"
+            )
+            if entity_detail["type"] == "mentioned_robot":
+                entity_detail["bot_name"] = entity_text.lstrip("@")[:-1]
+                msg.append(
+                    MessageSegment.mention_robot(
+                        entity_detail["bot_id"], entity_detail["bot_name"]
+                    )
+                )
+            elif entity_detail["type"] == "mentioned_user":
+                entity_detail["user_name"] = entity_text.lstrip("@")[:-1]
+                msg.append(
+                    MessageSegment.mention_user(
+                        int(entity_detail["user_id"]), data["villa_id"]
+                    )
+                )
+            elif entity_detail["type"] == "mention_all":
+                entity_detail["show_text"] = entity_text.lstrip("@")[:-1]
+                msg.append(MessageSegment.mention_all(entity_detail["show_text"]))
+            elif entity_detail["type"] == "villa_room_link":
+                entity_detail["room_name"] = entity_text.lstrip("#")[:-1]
+                msg.append(
+                    MessageSegment.room_link(
+                        int(entity_detail["villa_id"]),
+                        int(entity_detail["room_id"]),
+                    )
+                )
+            else:
+                entity_detail["show_text"] = entity_text
+                msg.append(MessageSegment.link(entity_detail["url"], entity_text))
+            last_offset = offset
+            last_length = length
+        end_offset = last_offset + last_length
+        if last_text := text[(end_offset + 1) * 2 :].decode("utf-16"):
+            msg.append(MessageSegment.text(last_text))
+        data["message"] = msg
+        return data
 
     async def send(
         self,

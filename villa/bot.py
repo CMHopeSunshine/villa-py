@@ -411,12 +411,14 @@ class Bot:
 
     async def get_room(self, villa_id: int, room_id: int) -> Room:
         return Room.parse_obj(
-            await self._request(
-                "GET",
-                "vila/api/bot/platform/getRoom",
-                villa_id,
-                json={"room_id": room_id},
-            )
+            (
+                await self._request(
+                    "GET",
+                    "vila/api/bot/platform/getRoom",
+                    villa_id,
+                    json={"room_id": room_id},
+                )
+            )["room"]
         )
 
     async def get_villa_group_room_list(self, villa_id: int) -> GroupRoom:
@@ -640,36 +642,39 @@ class Bot:
             )
 
     async def _parse_message_content(self, message: Message) -> MessageContentInfo:
-        if quote := message["quote", 1]:
+        if quote := message["quote", 0]:
             quote = QuoteInfo(**quote.dict())
         message_text = ""
         message_offset = 0
         entities: List[TextEntity] = []
         images: List[Image] = []
         mentioned = MentionedInfo(type=MentionType.PART)
-        for i, seg in enumerate(message.__root__):
+        for seg in message:
             try:
-                space = " " if i != len(message) - 1 else ""
                 if isinstance(seg, TextSegment):
                     message_text += seg.content
                     message_offset += len(seg.content)
                 elif isinstance(seg, MentionAllSegment):
-                    message_text += "@全体成员{space}"
+                    message_text += f"@{seg.show_text} "
                     entities.append(
                         TextEntity(
-                            offset=message_offset, length=6, entity=MentionedAll()
+                            offset=message_offset,
+                            length=6,
+                            entity=MentionedAll(show_text=seg.show_text),
                         )
                     )
-                    message_offset += 6
+                    message_offset += len(f"@{seg.show_text} ")
                     mentioned.type = MentionType.ALL
                 elif isinstance(seg, MentionRobotSegment):
                     bot_name = self.bot_info.template.name if self.bot_info else "Bot"
-                    message_text += f"@{bot_name}{space}"
+                    message_text += f"@{bot_name} "
                     entities.append(
                         TextEntity(
                             offset=message_offset,
                             length=len(f"@{bot_name}".encode("utf-16")) // 2,
-                            entity=MentionedRobot(bot_id=self.bot_id),
+                            entity=MentionedRobot(
+                                bot_id=self.bot_id, bot_name=bot_name
+                            ),
                         )
                     )
                     message_offset += len(f"@{bot_name}") + 1
@@ -677,12 +682,15 @@ class Bot:
                 elif isinstance(seg, MentionUserSegment):
                     # 需要调用API获取被@的用户的昵称
                     user = await self.get_member(villa_id=seg.villa_id, uid=seg.user_id)
-                    message_text += f"@{user.basic.nickname}{space}"
+                    message_text += f"@{user.basic.nickname} "
                     entities.append(
                         TextEntity(
                             offset=message_offset,
                             length=len(f"@{user.basic.nickname}".encode("utf-16")) // 2,
-                            entity=MentionedUser(user_id=str(user.basic.uid)),
+                            entity=MentionedUser(
+                                user_id=str(user.basic.uid),
+                                user_name=user.basic.nickname,
+                            ),
                         )
                     )
                     message_offset += len(f"@{user.basic.nickname}") + 1
@@ -692,7 +700,7 @@ class Bot:
                     room = await self.get_room(
                         villa_id=seg.villa_id, room_id=seg.room_id
                     )
-                    message_text += f"#{room.room_name}{space}"
+                    message_text += f"#{room.room_name} "
                     entities.append(
                         TextEntity(
                             offset=message_offset,
@@ -700,18 +708,21 @@ class Bot:
                             entity=VillaRoomLink(
                                 villa_id=str(seg.villa_id),
                                 room_id=str(seg.room_id),
+                                room_name=room.room_name,
                             ),
                         )
                     )
                     message_offset += len(f"#{room.room_name} ")
                 elif isinstance(seg, LinkSegment):
                     show_text = seg.show_text or seg.url
-                    message_text += show_text + space
+                    message_text += show_text
                     entities.append(
                         TextEntity(
                             offset=message_offset,
                             length=len(show_text.encode("utf-16")) // 2,
-                            entity=Link(url=seg.url),
+                            entity=Link(
+                                url=seg.url, show_text=seg.show_text or seg.url
+                            ),
                         )
                     )
                     message_offset += len(show_text) + 1

@@ -12,9 +12,10 @@ _✨ 米游社大别野Bot Python SDK ✨_
 
 ## 特性
 
-- 基于`FastAPI`，异步、快速、高性能！
+- 基于`FastAPI`和`Pydantic`，异步、快速、高性能！
+- 完整的类型注解支持
 - 便捷的消息构造和发送方法
-- 完整的消息段和API支持
+- 丰富的消息段和完整的API支持
 - ~~想不出来了~~
 
 ## 安装
@@ -25,7 +26,7 @@ _✨ 米游社大别野Bot Python SDK ✨_
 
 ## 快速开始
 
-首先你需要一个米游社大别野的Bot，如果没有请先自行申请，拿到`bot_id`、`bot_secret`
+首先你需要一个[米游社大别野](https://dby.miyoushe.com/chat)的Bot，如果没有请先到机器人开发者社区(别野ID: OpenVilla)申请，取得`bot_id`、`bot_secret`
 
 ```python
 from villa import Bot
