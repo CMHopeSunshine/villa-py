@@ -4,9 +4,17 @@
 
 _✨ 米游社大别野Bot Python SDK ✨_
 
+<a href="https://cdn.jsdelivr.net/gh/CMHopeSunshine/villa-py@master/LICENSE">
+    <img src="https://img.shields.io/github/license/CMHopeSunshine/villa-py" alt="license">
+</a>
 <img src="https://img.shields.io/pypi/v/villa" alt="version">
 <img src="https://img.shields.io/badge/Python-3.8+-yellow" alt="python">
-<a href="https://cdn.jsdelivr.net/gh/CMHopeSunshine/villa-py@master/LICENSE"><img src="https://img.shields.io/github/license/CMHopeSunshine/villa-py" alt="license"></a>
+<a href="https://pypi.python.org/pypi/villa">
+  <img src="https://img.shields.io/pypi/dm/villa" alt="pypi download">
+</a>
+<a href="https://wakatime.com/badge/user/eed3f89c-5d65-46e6-ab19-78dcc4b62b3f/project/d3b88a99-17c2-4c98-bbc2-c1949ce7c078">
+  <img src="https://wakatime.com/badge/user/eed3f89c-5d65-46e6-ab19-78dcc4b62b3f/project/d3b88a99-17c2-4c98-bbc2-c1949ce7c078.svg" alt="wakatime">
+</a>
 
 </div>
 
@@ -26,7 +34,7 @@ _✨ 米游社大别野Bot Python SDK ✨_
 
 ## 快速开始
 
-首先你需要一个[米游社大别野](https://dby.miyoushe.com/chat)的Bot，如果没有请先到机器人开发者社区(别野ID: OpenVilla)申请，取得`bot_id`、`bot_secret`
+首先你需要一个[米游社大别野](https://dby.miyoushe.com/chat)的Bot，如果没有请先到[机器人开发者社区](https://dby.miyoushe.com/chat/463/20020)(别野ID: OpenVilla)申请，取得`bot_id`、`bot_secret`
 
 ```python
 from villa import Bot
