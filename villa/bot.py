@@ -644,67 +644,84 @@ class Bot:
     async def _parse_message_content(self, message: Message) -> MessageContentInfo:
         if quote := message["quote", 0]:
             quote = QuoteInfo(**quote.dict())
+
+        if images_msg := (message["image"] or None):
+            images_msg: List[ImageSegment]
+            images = [
+                Image(
+                    url=seg.url,
+                    size=ImageSize(width=seg.width, height=seg.height)
+                    if seg.width and seg.height
+                    else None,
+                    file_size=seg.file_size,
+                )
+                for seg in images_msg
+            ]
+        else:
+            images = None
+        cal_len = lambda x: len(x.encode("utf-16")) // 2 - 1
         message_text = ""
         message_offset = 0
         entities: List[TextEntity] = []
-        images: List[Image] = []
         mentioned = MentionedInfo(type=MentionType.PART)
         for seg in message:
             try:
+                if seg.type in ("quote", "image"):
+                    continue
                 if isinstance(seg, TextSegment):
-                    message_text += seg.content
-                    message_offset += len(seg.content)
+                    seg_text = seg.content
+                    length = cal_len(seg_text)
                 elif isinstance(seg, MentionAllSegment):
-                    message_text += f"@{seg.show_text} "
+                    seg_text = f"@{seg.data['show_text']} "
+                    length = cal_len(seg_text)
                     entities.append(
                         TextEntity(
                             offset=message_offset,
-                            length=6,
+                            length=length,
                             entity=MentionedAll(show_text=seg.show_text),
                         )
                     )
-                    message_offset += len(f"@{seg.show_text} ")
                     mentioned.type = MentionType.ALL
                 elif isinstance(seg, MentionRobotSegment):
-                    bot_name = self.bot_info.template.name if self.bot_info else "Bot"
-                    message_text += f"@{bot_name} "
+                    seg_text = f"@{seg.bot_name} "
+                    length = cal_len(seg_text)
                     entities.append(
                         TextEntity(
                             offset=message_offset,
-                            length=len(f"@{bot_name}".encode("utf-16")) // 2,
+                            length=length,
                             entity=MentionedRobot(
-                                bot_id=self.bot_id, bot_name=bot_name
+                                bot_id=seg.bot_id, bot_name=seg.bot_name
                             ),
                         )
                     )
-                    message_offset += len(f"@{bot_name}") + 1
-                    mentioned.user_id_list.append(self.bot_id)
+                    mentioned.user_id_list.append(seg.bot_id)
                 elif isinstance(seg, MentionUserSegment):
                     # 需要调用API获取被@的用户的昵称
                     user = await self.get_member(villa_id=seg.villa_id, uid=seg.user_id)
-                    message_text += f"@{user.basic.nickname} "
+                    seg_text = f"@{user.basic.nickname} "
+                    length = cal_len(seg_text)
                     entities.append(
                         TextEntity(
                             offset=message_offset,
-                            length=len(f"@{user.basic.nickname}".encode("utf-16")) // 2,
+                            length=length,
                             entity=MentionedUser(
                                 user_id=str(user.basic.uid),
                                 user_name=user.basic.nickname,
                             ),
                         )
                     )
-                    message_offset += len(f"@{user.basic.nickname}") + 1
                     mentioned.user_id_list.append(str(user.basic.uid))
                 elif isinstance(seg, RoomLinkSegment):
                     # 需要调用API获取房间的名称
                     room = await self.get_room(
                         villa_id=seg.villa_id, room_id=seg.room_id
                     )
-                    message_text += f"#{room.room_name} "
+                    seg_text = f"#{room.room_name} "
+                    length = cal_len(seg_text)
                     entities.append(
                         TextEntity(
                             offset=message_offset,
-                            length=len(f"#{room.room_name}".encode("utf-16")) // 2,
+                            length=length,
                             entity=VillaRoomLink(
                                 villa_id=str(seg.villa_id),
                                 room_id=str(seg.room_id),
@@ -712,36 +729,25 @@ class Bot:
                             ),
                         )
                     )
-                    message_offset += len(f"#{room.room_name} ")
-                elif isinstance(seg, LinkSegment):
-                    show_text = seg.show_text or seg.url
-                    message_text += show_text
+                else:
+                    seg: LinkSegment
+                    seg_text = seg.show_text
+                    length = cal_len(seg_text)
                     entities.append(
                         TextEntity(
                             offset=message_offset,
-                            length=len(show_text.encode("utf-16")) // 2,
-                            entity=Link(
-                                url=seg.url, show_text=seg.show_text or seg.url
-                            ),
+                            length=seg_text,
+                            entity=Link(url=seg.url, show_text=seg.show_text),
                         )
                     )
-                    message_offset += len(show_text) + 1
-                elif isinstance(seg, ImageSegment):
-                    images.append(
-                        Image(
-                            url=seg.url,
-                            size=ImageSize(width=seg.width, height=seg.height)
-                            if (seg.width and seg.height)
-                            else None,
-                            file_size=seg.file_size,
-                        )
-                    )
+                message_offset += length
+                message_text += seg_text
             except Exception as e:
                 logger.opt(exception=e).warning("error when parse message content")
 
         # 不能单独只发图片而没有其他文本内容
         if images and not message_text:
-            message_text = "图片"
+            message_text = "\u200B"
 
         if not (mentioned.type == MentionType.ALL and mentioned.user_id_list):
             mentioned = None

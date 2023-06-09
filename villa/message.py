@@ -50,7 +50,7 @@ class MessageSegment(ABC, BaseModel):
 
     @staticmethod
     def link(url: str, show_text: Optional[str] = None) -> "Link":
-        return Link(url=url, show_text=show_text)
+        return Link(url=url, show_text=show_text or url)
 
     @staticmethod
     def image(
@@ -130,7 +130,7 @@ class Link(MessageSegment):
 
     type: Literal["link"] = "link"
     url: str
-    show_text: Optional[str] = None
+    show_text: str
 
 
 class Image(MessageSegment):
@@ -247,7 +247,7 @@ class Message(BaseModel):
         self.__root__.append(RoomLink(villa_id=villa_id, room_id=room_id))
         return self
 
-    def link(self, url: str, text: Optional[str] = None) -> Self:
+    def link(self, url: str, show_text: Optional[str] = None) -> Self:
         """说明
 
         详细说明
@@ -259,7 +259,7 @@ class Message(BaseModel):
         返回:
             Self: 返回说明
         """
-        self.__root__.append(Link(url=url, show_text=text or url))
+        self.__root__.append(Link(url=url, show_text=show_text or url))
         return self
 
     def image(
