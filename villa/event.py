@@ -3,7 +3,7 @@ from typing import Dict, Type, Union, Optional
 
 from pydantic import Extra, BaseModel, root_validator
 
-from .store import _bots
+from .store import get_bot
 from .models import MessageContentInfo
 from .message import Message, MessageSegment
 
@@ -161,9 +161,21 @@ class SendMessageEvent(Event):
         mention_sender: bool = False,
         quote_message: bool = False,
     ) -> str:
-        """回复消息"""
-        if not (bot := _bots.get(self.bot_id)):
-            raise ValueError("bot not found")
+        """对事件进行快速发送消息
+
+        参数:
+            message: 消息内容
+            mention_sender: 是否@发送者. 默认为 False.
+            quote_message: 是否引用事件消息. 默认为 False.
+
+        异常:
+            ValueError: 找不到 Bot 实例
+
+        返回:
+            str: 消息 ID
+        """
+        if (bot := get_bot(self.bot_id)) is None:
+            raise ValueError(f"Bot {self.bot_id} not found. Cannot send message.")
         if isinstance(message, (str, MessageSegment)):
             message = Message(message)
         if mention_sender:
