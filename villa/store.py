@@ -1,9 +1,12 @@
 from typing import TYPE_CHECKING, Dict, Optional
 
+from fastapi import FastAPI
+
 if TYPE_CHECKING:
     from .bot import Bot
 
 _bots: Dict[str, "Bot"] = {}
+_app: FastAPI = FastAPI()
 
 
 def get_bot(bot_id: Optional[str] = None) -> Optional["Bot"]:
@@ -33,4 +36,9 @@ def store_bot(bot: "Bot") -> None:
     _bots[bot.bot_id] = bot
 
 
-__all__ = ["get_bot", "get_bots", "store_bot"]
+def get_app() -> FastAPI:
+    """获取 FastAPI 实例"""
+    return _app
+
+
+__all__ = ["get_bot", "get_bots", "store_bot", "get_app"]
