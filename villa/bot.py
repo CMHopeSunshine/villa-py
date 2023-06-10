@@ -14,13 +14,13 @@ from .message import Message
 from .exception import ActionFailed
 from .message import MessageSegment
 from .log import logger, _log_patcher
-from .store import get_bot, store_bot
 from .utils import run_sync, escape_tag
 from .message import Link as LinkSegment
 from .message import Text as TextSegment
 from .message import Image as ImageSegment
-from .typing import T_Handler, EventHandler
+from .store import get_app, get_bot, store_bot
 from .message import RoomLink as RoomLinkSegment
+from .typing import T_Func, T_Handler, EventHandler
 from .message import MentionAll as MentionAllSegment
 from .message import MentionUser as MentionUserSegment
 from .message import MentionRobot as MentionRobotSegment
@@ -787,12 +787,14 @@ def run_bots(
     logger.configure(extra={"villa_log_level": log_level}, patcher=_log_patcher)
     logger.success("Starting Villa...")
     fastapi_kwargs = {
-        k.lstrip("fastapi"): v for k, v in kwargs.items() if k.startswith("fastapi_")
+        k.lstrip("fastapi_"): v for k, v in kwargs.items() if k.startswith("fastapi_")
     }
     uvicorn_kwargs = {
         k.lstrip("uvicorn_"): v for k, v in kwargs.items() if k.startswith("uvicorn_")
     }
-    app = FastAPI(**fastapi_kwargs)
+    app = get_app()
+    for key, value in fastapi_kwargs.items():
+        setattr(app, key, value)
     for bot in bots:
         logger.opt(colors=True).info(f"Initializing Bot <m>{bot.bot_id}</m>...")
         logger.opt(colors=True).debug(
@@ -876,3 +878,21 @@ async def run_handler(handler: EventHandler, event: Event):
         logger.opt(exception=e).error(
             f"Error when running {handler} for {event.__class__.__name__}"
         )
+
+
+def on_startup(func: T_Func):
+    """让函数在 Villa 启动时运行
+
+    参数:
+        func: 无参函数
+    """
+    get_app().on_event("startup")(func)
+
+
+def on_shutdown(func: T_Func):
+    """让函数在 Villa 终止前运行
+
+    参数:
+        func: 无参函数
+    """
+    get_app().on_event("shutdown")(func)
