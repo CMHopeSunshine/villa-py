@@ -31,6 +31,7 @@ class Bot:
     """Villa Bot"""
 
     _event_handlers: List[EventHandler] = []
+    _client: httpx.AsyncClient
     bot_id: str
     bot_secret: str
     callback_url: str
@@ -47,6 +48,9 @@ class Bot:
         self.bot_id: str = bot_id
         self.bot_secret: str = bot_secret
         self.callback_url: str = callback_url
+        self._client = httpx.AsyncClient(
+            base_url="https://bbs-api.miyoushe.com/vila/api/bot/platform/"
+        )
         store_bot(self)
 
     def on_event(
@@ -235,7 +239,7 @@ class Bot:
         return CheckMemberBotAccessTokenReturn.parse_obj(
             await self._request(
                 "GET",
-                "vila/api/bot/platform/checkMemberBotAccessToken",
+                "checkMemberBotAccessToken",
                 villa_id,
                 json={"token": token},
             )
@@ -243,11 +247,7 @@ class Bot:
 
     async def get_villa(self, villa_id: int) -> Villa:
         return Villa.parse_obj(
-            (
-                await self._request(
-                    "GET", "vila/api/bot/platform/getVilla", villa_id, json={}
-                )
-            )["villa"]
+            (await self._request("GET", "getVilla", villa_id, json={}))["villa"]
         )
 
     async def get_member(self, villa_id: int, uid: int) -> Member:
@@ -255,7 +255,7 @@ class Bot:
             (
                 await self._request(
                     "GET",
-                    "vila/api/bot/platform/getMember",
+                    "getMember",
                     villa_id,
                     json={"uid": uid},
                 )
@@ -268,7 +268,7 @@ class Bot:
         return MemberListReturn.parse_obj(
             await self._request(
                 "GET",
-                "vila/api/bot/platform/getVillaMembers",
+                "getVillaMembers",
                 villa_id,
                 json={"offset": offset, "size": size},
             )
@@ -277,7 +277,7 @@ class Bot:
     async def delete_villa_member(self, villa_id: int, uid: int) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/deleteVillaMember",
+            "deleteVillaMember",
             villa_id,
             json={"uid": uid},
         )
@@ -287,7 +287,7 @@ class Bot:
     ) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/pinMessage",
+            "pinMessage",
             villa_id,
             json={
                 "msg_uid": msg_uid,
@@ -302,7 +302,7 @@ class Bot:
     ) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/recallMessage",
+            "recallMessage",
             villa_id,
             json={"msg_uid": msg_uid, "msg_time": msg_time, "room_id": room_id},
         )
@@ -321,7 +321,7 @@ class Bot:
         return (
             await self._request(
                 "POST",
-                "vila/api/bot/platform/sendMessage",
+                "sendMessage",
                 villa_id,
                 json={
                     "room_id": room_id,
@@ -335,7 +335,7 @@ class Bot:
         return (
             await self._request(
                 "POST",
-                "vila/api/bot/platform/createGroup",
+                "createGroup",
                 villa_id,
                 json={
                     "group_name": group_name,
@@ -346,7 +346,7 @@ class Bot:
     async def edit_group(self, villa_id: int, group_id: int, group_name: str) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/editGroup",
+            "editGroup",
             villa_id,
             json={"group_id": group_id, "group_name": group_name},
         )
@@ -354,7 +354,7 @@ class Bot:
     async def delete_group(self, villa_id: int, group_id: int) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/deleteGroup",
+            "deleteGroup",
             villa_id,
             json={"group_id": group_id},
         )
@@ -362,17 +362,13 @@ class Bot:
     async def get_group_list(self, villa_id: int) -> List[Group]:
         return parse_obj_as(
             List[Group],
-            (
-                await self._request(
-                    "GET", "vila/api/bot/platform/getGroupList", villa_id, json={}
-                )
-            )["list"],
+            (await self._request("GET", "getGroupList", villa_id, json={}))["list"],
         )
 
     async def sort_group_list(self, villa_id: int, group_ids: List[int]) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/sortGroupList",
+            "sortGroupList",
             villa_id,
             json={"villa_id": villa_id, "group_ids": group_ids},
         )
@@ -390,7 +386,7 @@ class Bot:
             (
                 await self._request(
                     "POST",
-                    "vila/api/bot/platform/createRoom",
+                    "createRoom",
                     villa_id,
                     json={
                         "room_name": room_name,
@@ -406,7 +402,7 @@ class Bot:
     async def edit_room(self, villa_id: int, room_id: int, room_name: str) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/editRoom",
+            "editRoom",
             villa_id,
             json={"room_id": room_id, "room_name": room_name},
         )
@@ -414,7 +410,7 @@ class Bot:
     async def delete_room(self, villa_id: int, room_id: int) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/deleteRoom",
+            "deleteRoom",
             villa_id,
             json={"room_id": room_id},
         )
@@ -424,7 +420,7 @@ class Bot:
             (
                 await self._request(
                     "GET",
-                    "vila/api/bot/platform/getRoom",
+                    "getRoom",
                     villa_id,
                     json={"room_id": room_id},
                 )
@@ -436,7 +432,7 @@ class Bot:
             (
                 await self._request(
                     "GET",
-                    "vila/api/bot/platform/getVillaGroupRoomList",
+                    "getVillaGroupRoomList",
                     villa_id,
                     json={},
                 )
@@ -446,7 +442,7 @@ class Bot:
     async def sort_room_list(self, villa_id: int, room_list: List[RoomSort]) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/sortRoomList",
+            "sortRoomList",
             villa_id,
             json={
                 "villa_id": villa_id,
@@ -459,7 +455,7 @@ class Bot:
     ) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/operateMemberToRole",
+            "operateMemberToRole",
             villa_id,
             json={"role_id": role_id, "uid": uid, "is_add": is_add},
         )
@@ -470,7 +466,7 @@ class Bot:
         return (
             await self._request(
                 "POST",
-                "vila/api/bot/platform/createMemberRole",
+                "createMemberRole",
                 villa_id,
                 json={"name": name, "color": str(color), "permissions": permissions},
             )
@@ -486,7 +482,7 @@ class Bot:
     ) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/editMemberRole",
+            "editMemberRole",
             villa_id,
             json={
                 "id": role_id,
@@ -499,7 +495,7 @@ class Bot:
     async def delete_member_role(self, villa_id: int, role_id: int) -> None:
         await self._request(
             "POST",
-            "vila/api/bot/platform/deleteMemberRole",
+            "deleteMemberRole",
             villa_id,
             json={"id": role_id},
         )
@@ -511,7 +507,7 @@ class Bot:
             (
                 await self._request(
                     "GET",
-                    "vila/api/bot/platform/getMemberRoleInfo",
+                    "getMemberRoleInfo",
                     villa_id,
                     json={"id": role_id},
                 )
@@ -524,7 +520,7 @@ class Bot:
             (
                 await self._request(
                     "GET",
-                    "vila/api/bot/platform/getVillaMemberRoles",
+                    "getVillaMemberRoles",
                     villa_id,
                     json={},
                 )
@@ -537,7 +533,7 @@ class Bot:
             (
                 await self._request(
                     "GET",
-                    "vila/api/bot/platform/getAllEmoticons",
+                    "getAllEmoticons",
                     villa_id,
                     json={},
                 )
@@ -555,7 +551,7 @@ class Bot:
         return (
             await self._request(
                 "POST",
-                "vila/api/bot/platform/audit",
+                "audit",
                 villa_id,
                 json={
                     "audit_content": audit_content,
@@ -575,7 +571,7 @@ class Bot:
 
     async def _request(
         self,
-        method: str,
+        method: Literal["GET", "POST"],
         api: str,
         villa_id: Optional[int],
         json: Dict[str, Any],
@@ -585,21 +581,23 @@ class Bot:
             f"<b><m>{self.bot_id}</m></b> | Calling API <y>{api.split('/')[-1]}</y>"
         )
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.request(
-                    method=method,
-                    url=f"https://bbs-api.miyoushe.com/{api}",
-                    headers=self._get_headers(villa_id),
-                    json=json,
-                    **kwargs,
-                )
-                resp = ApiResponse.parse_raw(resp.content)
-                if resp.retcode == 0:
-                    return resp.data
-                else:
-                    raise ActionFailed(resp.retcode, resp)
+            resp = await self._client.request(
+                method=method,
+                url=api,
+                headers=self._get_headers(villa_id),
+                json=json,
+                **kwargs,
+            )
+            resp = ApiResponse.parse_raw(resp.content)
+            if resp.retcode == 0:
+                return resp.data
+            else:
+                raise ActionFailed(resp.retcode, resp)
         except Exception as e:
             raise e
+
+    async def _close_client(self) -> None:
+        await self._client.aclose()
 
     async def _handle_event(self, event: Event):
         is_handled = False
@@ -801,6 +799,7 @@ def run_bots(
             f"With Secret: <m>{bot.bot_secret}</m> and Callback URL: <m>{bot.callback_url}</m>"
         )
         app.post(bot.callback_url, status_code=200)(handle_event)
+        app.on_event("shutdown")(bot._close_client)
     uvicorn.run(
         app,
         host=host,
