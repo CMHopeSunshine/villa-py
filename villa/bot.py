@@ -10,11 +10,11 @@ from pydantic import parse_obj_as
 from fastapi.responses import JSONResponse
 
 from .models import *
-from .store import _bots
 from .message import Message
 from .exception import ActionFailed
 from .message import MessageSegment
 from .log import logger, _log_patcher
+from .store import get_bot, store_bot
 from .utils import run_sync, escape_tag
 from .message import Link as LinkSegment
 from .message import Text as TextSegment
@@ -28,16 +28,26 @@ from .event import Event, SendMessageEvent, event_classes
 
 
 class Bot:
+    """Villa Bot"""
+
     _event_handlers: List[EventHandler] = []
+    bot_id: str
+    bot_secret: str
+    callback_url: str
+    bot_info: Optional[Robot] = None
 
     def __init__(self, bot_id: str, bot_secret: str, callback_url: str):
+        """初始化一个 Bot 实例
+
+        参数:
+            bot_id: 机器人 ID
+            bot_secret: 机器人密钥
+            callback_url: 事件回调地址
+        """
         self.bot_id: str = bot_id
         self.bot_secret: str = bot_secret
         self.callback_url: str = callback_url
-        self.bot_info: Optional[Robot] = None
-        if bot_id in _bots:
-            raise ValueError(f"Bot {bot_id} already in bots")
-        _bots[bot_id] = self
+        store_bot(self)
 
     def on_event(
         self, *event_type: Type[Event], block: bool = False, priority: int = 1
@@ -829,7 +839,7 @@ async def handle_event(data: dict) -> JSONResponse:
             status_code=400, content={"retcode": -1, "msg": "Invalid data"}
         )
     logger.trace(f"Received payload {escape_tag(repr(payload))}")
-    if not (bot := _bots.get(payload.robot.template.id, None)):
+    if (bot := get_bot(payload.robot.template.id)) is None:
         raise ValueError(f"Bot {payload.robot.template.id} not found")
     bot.bot_info = payload.robot
     if (event_class := event_classes.get(payload.type, None)) and (
