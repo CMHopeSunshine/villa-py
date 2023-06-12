@@ -5,13 +5,6 @@ from typing import List, Tuple, Union, Literal, Iterable, Iterator, Optional, ov
 
 from pydantic import Field, BaseModel
 
-from .models import Link as LinkInfo
-from .models import MessageContentInfo
-from .models import MentionedAll as MentionedAllInfo
-from .models import MentionedUser as MentionedUserInfo
-from .models import VillaRoomLink as VillaRoomLinkInfo
-from .models import MentionedRobot as MentionedRobotInfo
-
 MessageType = Literal[
     "text",
     "mention_user",
