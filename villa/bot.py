@@ -5,7 +5,6 @@ from typing import Any, Set, Dict, List, Type, Union, Literal, Optional
 
 import httpx
 import uvicorn
-from fastapi import FastAPI
 from pydantic import parse_obj_as
 from fastapi.responses import JSONResponse
 
@@ -33,9 +32,13 @@ class Bot:
     _event_handlers: List[EventHandler] = []
     _client: httpx.AsyncClient
     bot_id: str
+    """机器人 Id"""
     bot_secret: str
+    """机器人密钥"""
     callback_url: str
+    """事件回调地址"""
     bot_info: Optional[Robot] = None
+    """机器人信息"""
 
     def __init__(self, bot_id: str, bot_secret: str, callback_url: str):
         """初始化一个 Bot 实例
@@ -53,6 +56,41 @@ class Bot:
         )
         store_bot(self)
 
+    @property
+    def nickname(self) -> str:
+        """Bot 昵称"""
+        if self.bot_info is None:
+            raise ValueError(f"Bot {self.bot_id} not connected")
+        return self.bot_info.template.name
+
+    @property
+    def avatar_icon(self) -> str:
+        """Bot 头像地址"""
+        if self.bot_info is None:
+            raise ValueError(f"Bot {self.bot_id} not connected")
+        return self.bot_info.template.icon
+
+    @property
+    def commands(self) -> Optional[List[RobotCommand]]:
+        """Bot 预设命令列表"""
+        if self.bot_info is None:
+            raise ValueError(f"Bot {self.bot_id} not connected")
+        return self.bot_info.template.commands
+
+    @property
+    def description(self) -> str:
+        """Bot 介绍"""
+        if self.bot_info is None:
+            raise ValueError(f"Bot {self.bot_id} not connected")
+        return self.bot_info.template.desc
+
+    @property
+    def current_villa_id(self) -> str:
+        """Bot 最后收到的事件的大别野 ID"""
+        if self.bot_info is None:
+            raise ValueError(f"Bot {self.bot_id} not connected")
+        return self.bot_info.villa_id
+
     def on_event(
         self, *event_type: Type[Event], block: bool = False, priority: int = 1
     ):
@@ -61,6 +99,7 @@ class Bot:
         当事件属于 event_type 中的任意一个时，执行处理函数。
 
         参数:
+            *event_type: 事件类型列表.
             block: 是否阻止更低优先级的处理函数执行. 默认为 False.
             priority: 优先级. 默认为 1.
         """
@@ -221,6 +260,16 @@ class Bot:
     async def send(
         self, villa_id: int, room_id: int, message: Union[str, Message, MessageSegment]
     ) -> str:
+        """发送消息
+
+        参数:
+            villa_id: 大别野 ID
+            room_id: 房间 ID
+            message: 消息内容
+
+        返回:
+            str: 消息 ID
+        """
         if isinstance(message, str):
             message = MessageSegment.text(message)
         if isinstance(message, MessageSegment):
@@ -236,6 +285,15 @@ class Bot:
     async def check_member_bot_access_token(
         self, token: str, villa_id: Optional[int] = None
     ) -> CheckMemberBotAccessTokenReturn:
+        """校验用户机器人访问凭证，并返回用户信息
+
+        参数:
+            token: 用户机器人访问凭证
+            villa_id: 大别野 ID. 默认为 None.
+
+        返回:
+            CheckMemberBotAccessTokenReturn: 用户信息
+        """
         return CheckMemberBotAccessTokenReturn.parse_obj(
             await self._request(
                 "GET",
@@ -246,11 +304,28 @@ class Bot:
         )
 
     async def get_villa(self, villa_id: int) -> Villa:
+        """获取大别野信息
+
+        参数:
+            villa_id: 大别野 ID
+
+        返回:
+            Villa: 大别野信息
+        """
         return Villa.parse_obj(
             (await self._request("GET", "getVilla", villa_id, json={}))["villa"]
         )
 
     async def get_member(self, villa_id: int, uid: int) -> Member:
+        """获取用户信息
+
+        参数:
+            villa_id: 大别野
+            uid: 用户 ID
+
+        返回:
+            Member: 用户详情
+        """
         return Member.parse_obj(
             (
                 await self._request(
@@ -265,6 +340,16 @@ class Bot:
     async def get_villa_members(
         self, villa_id: int, offset: int, size: int
     ) -> MemberListReturn:
+        """获取大别野成员列表
+
+        参数:
+            villa_id: 大别野 ID
+            offset: 偏移量
+            size: 分页大小
+
+        返回:
+            MemberListReturn: 大别野成员列表信息
+        """
         return MemberListReturn.parse_obj(
             await self._request(
                 "GET",
@@ -275,6 +360,12 @@ class Bot:
         )
 
     async def delete_villa_member(self, villa_id: int, uid: int) -> None:
+        """踢出大别野用户
+
+        参数:
+            villa_id: 大别野 ID
+            uid: 用户 ID
+        """
         await self._request(
             "POST",
             "deleteVillaMember",
@@ -285,6 +376,15 @@ class Bot:
     async def pin_message(
         self, villa_id: int, msg_uid: str, is_cancel: bool, room_id: int, send_at: int
     ) -> None:
+        """置顶消息
+
+        参数:
+            villa_id: 大别野 ID
+            msg_uid: 消息 ID
+            is_cancel: 是否取消置顶
+            room_id: 房间 ID
+            send_at: 消息发送时间
+        """
         await self._request(
             "POST",
             "pinMessage",
@@ -300,6 +400,14 @@ class Bot:
     async def recall_message(
         self, villa_id: int, msg_uid: str, room_id: int, msg_time: int
     ) -> None:
+        """撤回消息
+
+        参数:
+            villa_id: 大别野 ID
+            msg_uid: 消息 ID
+            room_id: 房间 ID
+            msg_time: 消息发送时间
+        """
         await self._request(
             "POST",
             "recallMessage",
@@ -314,6 +422,17 @@ class Bot:
         object_name: str,
         msg_content: Union[str, MessageContentInfo],
     ) -> str:
+        """发送消息
+
+        参数:
+            villa_id: 大别野 ID
+            room_id: 房间 ID
+            object_name: 消息类型
+            msg_content: 将 MsgContentInfo 结构体序列化后的字符串
+
+        返回:
+            str: 消息 ID
+        """
         if isinstance(msg_content, MessageContentInfo):
             content = msg_content.json(by_alias=True, exclude_none=True)
         else:
@@ -332,6 +451,15 @@ class Bot:
         )["bot_msg_id"]
 
     async def create_group(self, villa_id: int, group_name: str) -> int:
+        """创建分组
+
+        参数:
+            villa_id: 大别野 ID
+            group_name: 分组名称
+
+        返回:
+            int: 分组 ID
+        """
         return (
             await self._request(
                 "POST",
@@ -344,6 +472,13 @@ class Bot:
         )["group_id"]
 
     async def edit_group(self, villa_id: int, group_id: int, group_name: str) -> None:
+        """编辑分组
+
+        参数:
+            villa_id: 大别野 ID
+            group_id: 分组 ID
+            group_name: 分组名称
+        """
         await self._request(
             "POST",
             "editGroup",
@@ -352,6 +487,12 @@ class Bot:
         )
 
     async def delete_group(self, villa_id: int, group_id: int) -> None:
+        """删除分组
+
+        参数:
+            villa_id: 大别野 ID
+            group_id: 分组 ID
+        """
         await self._request(
             "POST",
             "deleteGroup",
@@ -360,12 +501,26 @@ class Bot:
         )
 
     async def get_group_list(self, villa_id: int) -> List[Group]:
+        """获取分组列表
+
+        参数:
+            villa_id: 大别野 ID
+
+        返回:
+            List[Group]: 分组列表
+        """
         return parse_obj_as(
             List[Group],
             (await self._request("GET", "getGroupList", villa_id, json={}))["list"],
         )
 
     async def sort_group_list(self, villa_id: int, group_ids: List[int]) -> None:
+        """分组列表排序
+
+        参数:
+            villa_id: 大别野 ID
+            group_ids: 分组 ID 排序
+        """
         await self._request(
             "POST",
             "sortGroupList",
@@ -382,6 +537,19 @@ class Bot:
         room_default_notify_type: Union[Literal[1, 2], CreateRoomDefaultNotifyType],
         send_msg_auth_range: SendMsgAuthRange,
     ) -> Room:
+        """创建房间
+
+        参数:
+            villa_id: 大别野 ID
+            room_name: 房间名称
+            room_type: 房间类型
+            group_id: 分组 ID
+            room_default_notify_type: 房间默认通知类型
+            send_msg_auth_range: 房间消息发送权限范围设置
+
+        返回:
+            Room: 房间信息
+        """
         return Room.parse_obj(
             (
                 await self._request(
@@ -400,6 +568,13 @@ class Bot:
         )
 
     async def edit_room(self, villa_id: int, room_id: int, room_name: str) -> None:
+        """编辑房间
+
+        参数:
+            villa_id: 大别野 ID
+            room_id: 房间 ID
+            room_name: 房间名称
+        """
         await self._request(
             "POST",
             "editRoom",
@@ -408,6 +583,12 @@ class Bot:
         )
 
     async def delete_room(self, villa_id: int, room_id: int) -> None:
+        """删除房间
+
+        参数:
+            villa_id: 大别野 ID
+            room_id: 房间 ID
+        """
         await self._request(
             "POST",
             "deleteRoom",
@@ -416,6 +597,15 @@ class Bot:
         )
 
     async def get_room(self, villa_id: int, room_id: int) -> Room:
+        """获取房间信息
+
+        参数:
+            villa_id: 大别野 ID
+            room_id: 房间 ID
+
+        返回:
+            Room: 房间详情
+        """
         return Room.parse_obj(
             (
                 await self._request(
@@ -428,6 +618,14 @@ class Bot:
         )
 
     async def get_villa_group_room_list(self, villa_id: int) -> GroupRoom:
+        """获取房间列表信息
+
+        参数:
+            villa_id: 大别野 ID
+
+        返回:
+            GroupRoom: 房间列表
+        """
         return GroupRoom.parse_obj(
             (
                 await self._request(
@@ -440,6 +638,12 @@ class Bot:
         )
 
     async def sort_room_list(self, villa_id: int, room_list: List[RoomSort]) -> None:
+        """房间列表排序
+
+        参数:
+            villa_id: 大别野 ID
+            room_list: 期望的排序列表
+        """
         await self._request(
             "POST",
             "sortRoomList",
@@ -453,6 +657,14 @@ class Bot:
     async def operate_member_to_role(
         self, villa_id: int, role_id: int, uid: int, is_add: bool
     ) -> None:
+        """向身份组操作用户
+
+        参数:
+            villa_id: 大别野 ID
+            role_id: 身份组 ID
+            uid: 用户 ID
+            is_add: 是否添加用户
+        """
         await self._request(
             "POST",
             "operateMemberToRole",
@@ -463,6 +675,17 @@ class Bot:
     async def create_member_role(
         self, villa_id: int, name: str, color: Color, permissions: List[Permission]
     ) -> int:
+        """创建身份组
+
+        参数:
+            villa_id: 大别野 ID
+            name: 身份组名称
+            color: 身份组颜色
+            permissions: 权限列表
+
+        返回:
+            int: 身份组 ID
+        """
         return (
             await self._request(
                 "POST",
@@ -480,6 +703,15 @@ class Bot:
         color: Color,
         permissions: List[Permission],
     ) -> None:
+        """编辑身份组
+
+        参数:
+            villa_id: 大别野 ID
+            role_id: 身份组 ID
+            name: 身份组名称
+            color: 身份组颜色
+            permissions: 权限列表
+        """
         await self._request(
             "POST",
             "editMemberRole",
@@ -493,6 +725,12 @@ class Bot:
         )
 
     async def delete_member_role(self, villa_id: int, role_id: int) -> None:
+        """删除身份组
+
+        参数:
+            villa_id: 大别野 ID
+            role_id: 身份组 ID
+        """
         await self._request(
             "POST",
             "deleteMemberRole",
@@ -503,6 +741,15 @@ class Bot:
     async def get_member_role_info(
         self, villa_id: int, role_id: int
     ) -> MemberRoleDetail:
+        """获取身份组
+
+        参数:
+            villa_id: 大别野 ID
+            role_id: 身份组 ID
+
+        返回:
+            MemberRoleDetail: 身份组详情
+        """
         return MemberRoleDetail.parse_obj(
             (
                 await self._request(
@@ -515,6 +762,14 @@ class Bot:
         )
 
     async def get_villa_member_roles(self, villa_id: int) -> List[MemberRoleDetail]:
+        """获取大别野下所有身份组
+
+        参数:
+            villa_id: 大别野 ID
+
+        返回:
+            List[MemberRoleDetail]: 身份组列表
+        """
         return parse_obj_as(
             List[MemberRoleDetail],
             (
@@ -527,14 +782,22 @@ class Bot:
             )["list"],
         )
 
-    async def get_all_emoticons(self, villa_id: int) -> List[Emoticon]:
+    async def get_all_emoticons(self) -> List[Emoticon]:
+        """获取全量表情
+
+        参数:
+            villa_id: 参数说明
+
+        返回:
+            List[Emoticon]: 表情列表
+        """
         return parse_obj_as(
             List[Emoticon],
             (
                 await self._request(
                     "GET",
                     "getAllEmoticons",
-                    villa_id,
+                    None,
                     json={},
                 )
             )["list"],
@@ -544,10 +807,24 @@ class Bot:
         self,
         villa_id: int,
         audit_content: str,
-        pass_through: str,
-        room_id: int,
-        uid: int,
+        pass_through: Optional[str] = None,
+        room_id: Optional[int] = None,
+        uid: Optional[int] = None,
     ) -> int:
+        """审核
+
+        审核用户配置内容是否合规，调用成功后会返回审核事件id(audit_id)。审核结果会通过回调接口异步通知。
+
+        参数:
+            villa_id: 大别野 ID
+            audit_content: 待审核内容
+            pass_through: 透传信息，该字段会在审核结果回调时携带给开发者，选填
+            room_id: 房间 id，选填
+            uid: 用户 id, 选填明
+
+        返回:
+            int: 审核事件 ID
+        """
         return (
             await self._request(
                 "POST",
@@ -563,6 +840,14 @@ class Bot:
         )["audit_id"]
 
     def _get_headers(self, villa_id: Optional[int] = None) -> Dict[str, str]:
+        """获取鉴权请求头
+
+        参数:
+            villa_id: 大别野 ID，部分无需
+
+        返回:
+            Dict[str, str]: 请求头
+        """
         return {
             "x-rpc-bot_id": self.bot_id,
             "x-rpc-bot_secret": self.bot_secret,
@@ -577,8 +862,23 @@ class Bot:
         json: Dict[str, Any],
         **kwargs,
     ) -> Any:
+        """请求 API
+
+        参数:
+            method: 请求方法
+            api: API 名称
+            villa_id: 大别野 ID
+            json: JSON请求体
+
+        异常:
+            ActionFailed: 动作失败
+            e: 其他请求异常
+
+        返回:
+            Any: 返回结果
+        """
         logger.opt(colors=True).debug(
-            f"<b><m>{self.bot_id}</m></b> | Calling API <y>{api.split('/')[-1]}</y>"
+            f"<b><m>{self.bot_id}</m></b> | Calling API <y>{api}</y>"
         )
         try:
             resp = await self._client.request(
@@ -597,9 +897,15 @@ class Bot:
             raise e
 
     async def _close_client(self) -> None:
+        """关闭 HTTP Client"""
         await self._client.aclose()
 
     async def _handle_event(self, event: Event):
+        """处理事件
+
+        参数:
+            event: 事件
+        """
         is_handled = False
         for event_handler in self._event_handlers:
             if isinstance(event, event_handler.event_type):
@@ -650,6 +956,7 @@ class Bot:
             )
 
     async def _parse_message_content(self, message: Message) -> MessageContentInfo:
+        """解析消息内容"""
         if quote := message["quote", 0]:
             quote = QuoteInfo(**quote.dict())
 
@@ -772,6 +1079,13 @@ class Bot:
         log_level: str = "INFO",
         **kwargs,
     ):
+        """启动机器人.
+
+        参数:
+            host: HOST 地址. 默认为 "127.0.0.1".
+            port: 端口号. 默认为 13350.
+            log_level: 日志等级. 默认为 "INFO".
+        """
         run_bots(bots=[self], host=host, port=port, log_level=log_level, **kwargs)
 
 
@@ -782,6 +1096,14 @@ def run_bots(
     log_level: str = "INFO",
     **kwargs,
 ):
+    """启动多个机器人.
+
+    参数:
+        bots: 机器人列表.
+        host: HOST 地址. 默认为 "127.0.0.1".
+        port: 端口号. 默认为 13350.
+        log_level: 日志等级. 默认为 "INFO".
+    """
     logger.configure(extra={"villa_log_level": log_level}, patcher=_log_patcher)
     logger.success("Starting Villa...")
     fastapi_kwargs = {
@@ -825,6 +1147,7 @@ def run_bots(
 
 
 async def handle_event(data: dict) -> JSONResponse:
+    """处理事件"""
     if not (payload_data := data.get("event", None)):
         logger.warning(f"Received invalid data: {escape_tag(str(data))}")
         return JSONResponse(
@@ -868,6 +1191,7 @@ async def handle_event(data: dict) -> JSONResponse:
 
 
 async def run_handler(handler: EventHandler, event: Event):
+    """运行事件处理器"""
     try:
         if asyncio.iscoroutinefunction(handler.func):
             await handler.func(event)
@@ -880,7 +1204,7 @@ async def run_handler(handler: EventHandler, event: Event):
 
 
 def on_startup(func: T_Func):
-    """让函数在 Villa 启动时运行
+    """让函数在 APP 启动时运行
 
     参数:
         func: 无参函数
@@ -889,7 +1213,7 @@ def on_startup(func: T_Func):
 
 
 def on_shutdown(func: T_Func):
-    """让函数在 Villa 终止前运行
+    """让函数在 APP 终止前运行
 
     参数:
         func: 无参函数
