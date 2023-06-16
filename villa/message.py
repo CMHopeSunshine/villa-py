@@ -14,6 +14,7 @@ MessageType = Literal[
     "link",
     "image",
     "quote",
+    "post",
 ]
 
 
@@ -44,6 +45,10 @@ class MessageSegment(ABC, BaseModel):
     @staticmethod
     def link(url: str, show_text: Optional[str] = None) -> "Link":
         return Link(url=url, show_text=show_text or url)
+
+    @staticmethod
+    def post(post_id: str) -> "Post":
+        return Post(post_id=post_id)
 
     @staticmethod
     def image(
@@ -144,6 +149,13 @@ class Quote(MessageSegment):
     quoted_message_send_time: int
     original_message_id: str
     original_message_send_time: int
+
+
+class Post(MessageSegment):
+    """帖子消息段"""
+
+    type: Literal["post"] = "post"
+    post_id: str
 
 
 class Message(BaseModel):
@@ -296,6 +308,18 @@ class Message(BaseModel):
                 original_message_send_time=message_send_time,
             )
         )
+        return self
+
+    def post(self, post_id: str) -> Self:
+        """帖子转发消息
+
+        参数:
+            post_id: 帖子ID
+
+        返回:
+            Self: 消息对象
+        """
+        self.__root__.append(Post(post_id=post_id))
         return self
 
     def insert(self, index: int, segment: Union[str, MessageSegment]):
@@ -580,6 +604,7 @@ class Message(BaseModel):
             "link",
             "image",
             "quote",
+            "post",
         ):
             if arg2 is None:
                 return Message([seg for seg in self.__root__ if seg.type == arg1])

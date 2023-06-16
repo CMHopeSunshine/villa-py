@@ -15,6 +15,7 @@ from .message import MessageSegment
 from .log import logger, _log_patcher
 from .utils import run_sync, escape_tag
 from .message import Link as LinkSegment
+from .message import Post as PostSegment
 from .message import Text as TextSegment
 from .message import Image as ImageSegment
 from .store import get_app, get_bot, store_bot
@@ -85,7 +86,7 @@ class Bot:
         return self.bot_info.template.desc
 
     @property
-    def current_villa_id(self) -> str:
+    def current_villa_id(self) -> int:
         """Bot 最后收到的事件的大别野 ID"""
         if self.bot_info is None:
             raise ValueError(f"Bot {self.bot_id} not connected")
@@ -274,12 +275,18 @@ class Bot:
             message = MessageSegment.text(message)
         if isinstance(message, MessageSegment):
             message = Message(message)
-        content = await self._parse_message_content(message)
+        content_info = await self._parse_message_content(message)
+        if isinstance(content_info.content, TextMessageContent):
+            object_name = "MHY:Text"
+        elif isinstance(content_info.content, ImageMessageContent):
+            object_name = "MHY:Image"
+        else:
+            object_name = "MHY:Post"
         return await self.send_message(
             villa_id=villa_id,
             room_id=room_id,
-            object_name="MHY:Text",
-            msg_content=content,
+            object_name=object_name,
+            msg_content=content_info.json(by_alias=True, exclude_none=True),
         )
 
     async def check_member_bot_access_token(
@@ -756,7 +763,7 @@ class Bot:
                     "GET",
                     "getMemberRoleInfo",
                     villa_id,
-                    json={"id": role_id},
+                    json={"role_id": role_id},
                 )
             )["role"]
         )
@@ -960,7 +967,7 @@ class Bot:
         if quote := message["quote", 0]:
             quote = QuoteInfo(**quote.dict())
 
-        if images_msg := (message["image"] or None):
+        if images_msg := (message["image"] or None):  # type: ignore
             images_msg: List[ImageSegment]
             images = [
                 Image(
@@ -974,20 +981,25 @@ class Bot:
             ]
         else:
             images = None
+        if posts_msg := (message["post"] or None):  # type: ignore
+            posts_msg: List[PostSegment]
+            post_ids = [seg.post_id for seg in posts_msg]
+        else:
+            post_ids = None
         cal_len = lambda x: len(x.encode("utf-16")) // 2 - 1
         message_text = ""
         message_offset = 0
         entities: List[TextEntity] = []
         mentioned = MentionedInfo(type=MentionType.PART)
-        for seg in message:
+        for seg in message:  # type: ignore
             try:
-                if seg.type in ("quote", "image"):
+                if seg.type in ("quote", "image", "post"):
                     continue
                 if isinstance(seg, TextSegment):
                     seg_text = seg.content
                     length = cal_len(seg_text)
                 elif isinstance(seg, MentionAllSegment):
-                    seg_text = f"@{seg.data['show_text']} "
+                    seg_text = f"@{seg.show_text} "
                     length = cal_len(seg_text)
                     entities.append(
                         TextEntity(
@@ -1051,7 +1063,7 @@ class Bot:
                     entities.append(
                         TextEntity(
                             offset=message_offset,
-                            length=seg_text,
+                            length=length,
                             entity=Link(url=seg.url, show_text=seg.show_text),
                         )
                     )
@@ -1060,14 +1072,41 @@ class Bot:
             except Exception as e:
                 logger.opt(exception=e).warning("error when parse message content")
 
-        # 不能单独只发图片而没有其他文本内容
-        if images and not message_text:
-            message_text = "\u200B"
-
         if not (mentioned.type == MentionType.ALL and mentioned.user_id_list):
             mentioned = None
+
+        if not (message_text or entities):
+            if images:
+                if len(images) > 1:
+                    logger.warning(
+                        "Sending multiple images in one message will not be visible on the web side!"
+                    )
+                    content = TextMessageContent(text="\u200B", images=images)
+                else:
+                    content = ImageMessageContent(**images[0].dict())
+            elif post_ids:
+                if len(post_ids) > 1:
+                    logger.opt(colors=True).warning(
+                        f"Only support one post in one message, so use the last one <m>{post_ids[-1]}</m>!"
+                    )
+                content = PostMessageContent(post_id=post_ids[-1])
+            else:
+                raise ValueError("message content is empty")
+        else:
+            if images and message_text:
+                logger.warning(
+                    "When a message is accompanied by text and image, image will not visible on the web side!"
+                )
+            if post_ids and message_text:
+                logger.warning(
+                    "When a message is accompanied by text and post, post will not visible!"
+                )
+            content = TextMessageContent(
+                text=message_text, entities=entities, images=images
+            )
+
         return MessageContentInfo(
-            content=MessageContent(text=message_text, entities=entities, images=images),
+            content=content,
             mentionedInfo=mentioned,
             quote=quote,
         )
