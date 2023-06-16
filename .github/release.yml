@@ -12,7 +12,7 @@
           - bug
       - title: 📝 文档更新
         labels:
-          - docs
+          - documentation
       - title: 💫 杂项
         labels:
           - "*"
