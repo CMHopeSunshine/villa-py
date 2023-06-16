@@ -535,45 +535,6 @@ class Bot:
             json={"villa_id": villa_id, "group_ids": group_ids},
         )
 
-    async def create_room(
-        self,
-        villa_id: int,
-        room_name: str,
-        room_type: Union[Literal[1, 2, 3], CreateRoomType],
-        group_id: int,
-        room_default_notify_type: Union[Literal[1, 2], CreateRoomDefaultNotifyType],
-        send_msg_auth_range: SendMsgAuthRange,
-    ) -> Room:
-        """创建房间
-
-        参数:
-            villa_id: 大别野 ID
-            room_name: 房间名称
-            room_type: 房间类型
-            group_id: 分组 ID
-            room_default_notify_type: 房间默认通知类型
-            send_msg_auth_range: 房间消息发送权限范围设置
-
-        返回:
-            Room: 房间信息
-        """
-        return Room.parse_obj(
-            (
-                await self._request(
-                    "POST",
-                    "createRoom",
-                    villa_id,
-                    json={
-                        "room_name": room_name,
-                        "room_type": room_type,
-                        "group_id": group_id,
-                        "room_default_notify_type": room_default_notify_type,
-                        "send_msg_auth_range": send_msg_auth_range.dict(),
-                    },
-                )
-            )["room"]
-        )
-
     async def edit_room(self, villa_id: int, room_id: int, room_name: str) -> None:
         """编辑房间
 
