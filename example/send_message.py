@@ -49,6 +49,13 @@ async def keyword_handler2(event: SendMessageEvent):
         .text("结尾文字")  # 纯文本
     )
 
+    # 可以转发米游社社区中的帖子
+    msg = MessageSegment.post("https://www.miyoushe.com/ys/article/40391314")
+
+    # 注意：
+    # 帖子只能单独发送，和其他消息段时将被忽略
+    # 如果在单次消息内，同时发送多张图片，或者和其他消息段拼接，那么图片将会在web端看不见，所以不建议这么做
+
     # 发送消息
     await event.send(msg)
     # 或者

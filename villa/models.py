@@ -188,10 +188,25 @@ class Image(BaseModel):
     file_size: Optional[int] = None
 
 
-class MessageContent(BaseModel):
+class PostMessageContent(BaseModel):
+    post_id: str
+
+    @validator("post_id")
+    def __deal_post_id(cls, v: str):
+        s = v.split("/")[-1]
+        if s.isdigit():
+            return s
+        raise ValueError(f"Invalid post_id: {v}, post_id must be a number.")
+
+
+class TextMessageContent(BaseModel):
     text: str
     entities: List[TextEntity] = Field(default_factory=list)
     images: Optional[List[Image]] = None
+
+
+class ImageMessageContent(Image):
+    pass
 
 
 class MentionedInfo(BaseModel):
@@ -231,7 +246,7 @@ class Trace(BaseModel):
 
 
 class MessageContentInfo(BaseModel):
-    content: MessageContent
+    content: Union[TextMessageContent, ImageMessageContent, PostMessageContent]
     mentioned_info: Optional[MentionedInfo] = Field(None, alias="mentionedInfo")
     quote: Optional[QuoteInfo] = None
     user: Optional[User] = None
@@ -424,7 +439,9 @@ __all__ = [
     "VillaRoomLink",
     "Link",
     "TextEntity",
-    "MessageContent",
+    "TextMessageContent",
+    "ImageMessageContent",
+    "PostMessageContent",
     "MentionedInfo",
     "QuoteInfo",
     "User",
