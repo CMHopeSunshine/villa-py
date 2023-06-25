@@ -4,7 +4,7 @@ import inspect
 from enum import Enum, IntEnum
 from typing import Any, List, Union, Literal, Optional
 
-from pydantic import Field, BaseModel, validator, root_validator
+from pydantic import Field, BaseModel, validator
 
 
 class ApiResponse(BaseModel):
@@ -20,61 +20,22 @@ class BotAuth(BaseModel):
 
 # http事件回调部分
 # see https://webstatic.mihoyo.com/vila/bot/doc/callback.html
-class RobotCommand(BaseModel):
+class Command(BaseModel):
     name: str
     desc: str
 
 
-class RobotTemplate(BaseModel):
+class Template(BaseModel):
     id: str
     name: str
     desc: str
     icon: str
-    commands: Optional[List[RobotCommand]] = None
+    commands: Optional[List[Command]] = None
 
 
 class Robot(BaseModel):
     villa_id: int
-    template: RobotTemplate
-
-
-class Payload(BaseModel):
-    robot: Robot
-    type: int
-    id: str
-    created_at: int
-    send_at: int
-    extend_data: dict
-
-    @root_validator(pre=True)
-    def _add_villa_id_to_extend_data(cls, values: dict):
-        """把villa_id和bot_id添加到extend_data中，方便使用"""
-        if values.get("type") == 2 and "SendMessage" in values.get(
-            "extend_data", {}
-        ).get("EventData", {}):
-            if isinstance(
-                values["extend_data"]["EventData"]["SendMessage"]["content"], str
-            ):
-                values["extend_data"]["EventData"]["SendMessage"][
-                    "content"
-                ] = json.loads(
-                    values["extend_data"]["EventData"]["SendMessage"]["content"]
-                )
-            if (
-                "villa_id" in values.get("robot", {})
-                and "villa_id" not in values["extend_data"]["EventData"]["SendMessage"]
-            ):
-                values["extend_data"]["EventData"]["SendMessage"]["villa_id"] = values[
-                    "robot"
-                ]["villa_id"]
-            if (
-                "id" in values.get("robot", {}).get("template", {})
-                and "bot_id" not in values["extend_data"]["EventData"]["SendMessage"]
-            ):
-                values["extend_data"]["EventData"]["SendMessage"]["bot_id"] = values[
-                    "robot"
-                ]["template"]["id"]
-        return values
+    template: Template
 
 
 ## 鉴权部分
@@ -422,10 +383,9 @@ for name, obj in inspect.getmembers(sys.modules[__name__]):
 __all__ = [
     "ApiResponse",
     "BotAuth",
-    "RobotCommand",
-    "RobotTemplate",
+    "Command",
+    "Template",
     "Robot",
-    "Payload",
     "BotMemberAccessInfo",
     "CheckMemberBotAccessTokenReturn",
     "Villa",

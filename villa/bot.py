@@ -24,7 +24,7 @@ from .typing import T_Func, T_Handler, EventHandler
 from .message import MentionAll as MentionAllSegment
 from .message import MentionUser as MentionUserSegment
 from .message import MentionRobot as MentionRobotSegment
-from .event import Event, SendMessageEvent, event_classes
+from .event import Event, SendMessageEvent, event_classes, pre_handle_event
 
 
 class Bot:
@@ -38,7 +38,7 @@ class Bot:
     """机器人密钥"""
     callback_url: str
     """事件回调地址"""
-    bot_info: Optional[Robot] = None
+    _bot_info: Optional[Robot] = None
     """机器人信息"""
 
     def __init__(self, bot_id: str, bot_secret: str, callback_url: str):
@@ -60,37 +60,37 @@ class Bot:
     @property
     def nickname(self) -> str:
         """Bot 昵称"""
-        if self.bot_info is None:
+        if self._bot_info is None:
             raise ValueError(f"Bot {self.bot_id} not connected")
-        return self.bot_info.template.name
+        return self._bot_info.template.name
 
     @property
     def avatar_icon(self) -> str:
         """Bot 头像地址"""
-        if self.bot_info is None:
+        if self._bot_info is None:
             raise ValueError(f"Bot {self.bot_id} not connected")
-        return self.bot_info.template.icon
+        return self._bot_info.template.icon
 
     @property
-    def commands(self) -> Optional[List[RobotCommand]]:
+    def commands(self) -> Optional[List[Command]]:
         """Bot 预设命令列表"""
-        if self.bot_info is None:
+        if self._bot_info is None:
             raise ValueError(f"Bot {self.bot_id} not connected")
-        return self.bot_info.template.commands
+        return self._bot_info.template.commands
 
     @property
     def description(self) -> str:
         """Bot 介绍"""
-        if self.bot_info is None:
+        if self._bot_info is None:
             raise ValueError(f"Bot {self.bot_id} not connected")
-        return self.bot_info.template.desc
+        return self._bot_info.template.desc
 
     @property
     def current_villa_id(self) -> int:
         """Bot 最后收到的事件的大别野 ID"""
-        if self.bot_info is None:
+        if self._bot_info is None:
             raise ValueError(f"Bot {self.bot_id} not connected")
-        return self.bot_info.villa_id
+        return self._bot_info.villa_id
 
     def on_event(
         self, *event_type: Type[Event], block: bool = False, priority: int = 1
@@ -1146,7 +1146,7 @@ def run_bots(
     )
 
 
-async def handle_event(data: dict) -> JSONResponse:
+async def handle_event(data: Dict[str, Any]) -> JSONResponse:
     """处理事件"""
     if not (payload_data := data.get("event", None)):
         logger.warning(f"Received invalid data: {escape_tag(str(data))}")
@@ -1154,7 +1154,13 @@ async def handle_event(data: dict) -> JSONResponse:
             status_code=400, content={"retcode": -1, "msg": "Invalid data"}
         )
     try:
-        payload = Payload.parse_obj(payload_data)
+        event = parse_obj_as(event_classes, pre_handle_event(payload_data))
+        if (bot := get_bot(event.bot_id)) is None:
+            raise ValueError(f"Bot {event.bot_id} not found")
+        bot._bot_info = event.robot
+        logger.opt(colors=True).success(
+            f"<b><m>{bot.bot_id}</m></b> | <b><y>[{event.__class__.__name__}]</y></b>: {escape_tag(str(event.dict()))}"
+        )
     except Exception as e:
         logger.opt(exception=e).warning(
             f"Failed to parse payload {escape_tag(str(payload_data))}"
@@ -1162,31 +1168,8 @@ async def handle_event(data: dict) -> JSONResponse:
         return JSONResponse(
             status_code=400, content={"retcode": -1, "msg": "Invalid data"}
         )
-    logger.trace(f"Received payload {escape_tag(repr(payload))}")
-    if (bot := get_bot(payload.robot.template.id)) is None:
-        raise ValueError(f"Bot {payload.robot.template.id} not found")
-    bot.bot_info = payload.robot
-    if (event_class := event_classes.get(payload.type, None)) and (
-        event_class.__type__.name in payload.extend_data["EventData"]
-    ):
-        try:
-            event = event_class.parse_obj(
-                payload.extend_data["EventData"][event_class.__type__.name]
-            )
-            logger.opt(colors=True).success(
-                f"<b><m>{bot.bot_id}</m></b> | <b><y>[{event.__class__.__name__}]</y></b>: {escape_tag(str(event.dict()))}"
-            )
-        except Exception as e:
-            logger.opt(exception=e).warning(
-                f"Failed to parse event {escape_tag(str(payload.extend_data['EventData']))} to {event_class.__name__}"
-            )
-        else:
-            asyncio.create_task(bot._handle_event(event))
     else:
-        logger.warning(
-            f"Unknown event type: {payload.type} data={escape_tag(str(payload.extend_data))}"
-        )
-
+        asyncio.create_task(bot._handle_event(event))
     return JSONResponse(status_code=200, content={"retcode": 0, "message": "success"})
 
 
