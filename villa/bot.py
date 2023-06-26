@@ -1159,7 +1159,7 @@ async def handle_event(data: Dict[str, Any]) -> JSONResponse:
             raise ValueError(f"Bot {event.bot_id} not found")
         bot._bot_info = event.robot
         logger.opt(colors=True).success(
-            f"<b><m>{bot.bot_id}</m></b> | <b><y>[{event.__class__.__name__}]</y></b>: {escape_tag(str(event.dict()))}"
+            f"<b><m>{bot.bot_id}</m></b> | <b><y>[{event.__class__.__name__}]</y></b>: {event.get_event_description()}"
         )
     except Exception as e:
         logger.opt(exception=e).warning(

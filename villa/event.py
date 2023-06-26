@@ -51,6 +51,9 @@ class Event(BaseModel):
         """机器人ID"""
         return self.robot.template.id
 
+    def get_event_description(self) -> str:
+        return escape_tag(str(self.dict()))
+
 
 class JoinVillaEvent(Event):
     """新用户加入大别野事件
@@ -69,6 +72,11 @@ class JoinVillaEvent(Event):
     def villa_id(self) -> int:
         """大别野ID"""
         return self.robot.villa_id
+
+    def get_event_description(self) -> str:
+        return escape_tag(
+            f"User(nickname={self.join_user_nickname},id={self.join_uid}) join Villa(id={self.villa_id})"
+        )
 
 
 class SendMessageEvent(Event):
@@ -102,8 +110,15 @@ class SendMessageEvent(Event):
         """大别野ID"""
         return self.robot.villa_id
 
+    def get_event_description(self) -> str:
+        return escape_tag(
+            f"Message(id={self.msg_uid}) was sent from User(nickname={self.nickname},id={self.from_user_id}) in Room(id={self.room_id}) of Villa(id={self.villa_id}), content={repr(self.message)}"
+        )
+
     @root_validator(pre=True)
     def _(cls, data: Dict[str, Any]):
+        if not data.get("content"):
+            return data
         msg = Message()
         data["content"] = json.loads(data["content"])
         msg_content_info = data["content"]
@@ -216,6 +231,11 @@ class CreateRobotEvent(Event):
     villa_id: int
     """大别野ID"""
 
+    def get_event_description(self) -> str:
+        return escape_tag(
+            f"Bot(id={self.bot_id}) was added to Villa(id={self.villa_id})"
+        )
+
 
 class DeleteRobotEvent(Event):
     """大别野删除机器人实例事件
@@ -225,6 +245,11 @@ class DeleteRobotEvent(Event):
     type: Literal[EventType.DeleteRobot] = EventType.DeleteRobot
     villa_id: int
     """大别野ID"""
+
+    def get_event_description(self) -> str:
+        return escape_tag(
+            f"Bot(id={self.bot_id}) was removed from Villa(id={self.villa_id})"
+        )
 
 
 class AddQuickEmoticonEvent(Event):
@@ -250,6 +275,11 @@ class AddQuickEmoticonEvent(Event):
     is_cancel: bool = False
     """是否是取消表情"""
 
+    def get_event_description(self) -> str:
+        return escape_tag(
+            f"Emoticon(name={self.emoticon}, id={self.emoticon_id}) was {'removed from' if self.is_cancel else 'added to'} Message(id={self.msg_uid}) by User(id={self.uid}) in Room(id=Villa(id={self.room_id}) of Villa(id={self.villa_id})"
+        )
+
 
 class AuditCallbackEvent(Event):
     """审核结果回调事件
@@ -271,6 +301,11 @@ class AuditCallbackEvent(Event):
     """透传数据（和审核接口调用方传入的值一致）"""
     audit_result: AuditResult
     """审核结果"""
+
+    def get_event_description(self) -> str:
+        return escape_tag(
+            f"Audit(id={self.audit_id},result={self.audit_result}) of User(id={self.user_id}) in Room(id={self.room_id}) of Villa(id={self.villa_id})"
+        )
 
 
 event_classes = Union[
