@@ -5,9 +5,9 @@ from typing import Any, Set, Dict, List, Type, Union, Literal, Optional
 
 import httpx
 import uvicorn
-from fastapi import FastAPI
 from pydantic import parse_obj_as
 from fastapi.responses import JSONResponse
+from fastapi import FastAPI, BackgroundTasks
 
 from .models import *
 from .message import Message
@@ -1150,7 +1150,9 @@ def run_bots(
     )
 
 
-async def handle_event(data: Dict[str, Any]) -> JSONResponse:
+async def handle_event(
+    data: Dict[str, Any], backgroud_tasks: BackgroundTasks
+) -> JSONResponse:
     """处理事件"""
     if not (payload_data := data.get("event", None)):
         logger.warning(f"Received invalid data: {escape_tag(str(data))}")
@@ -1173,7 +1175,7 @@ async def handle_event(data: Dict[str, Any]) -> JSONResponse:
             status_code=400, content={"retcode": -1, "msg": "Invalid data"}
         )
     else:
-        asyncio.create_task(bot._handle_event(event))
+        backgroud_tasks.add_task(bot._handle_event, event=event)
     return JSONResponse(status_code=200, content={"retcode": 0, "message": "success"})
 
 
