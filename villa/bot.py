@@ -5,6 +5,7 @@ from typing import Any, Set, Dict, List, Type, Union, Literal, Optional
 
 import httpx
 import uvicorn
+from fastapi import FastAPI
 from pydantic import parse_obj_as
 from fastapi.responses import JSONResponse
 
@@ -1072,6 +1073,14 @@ class Bot:
             quote=quote,
         )
 
+    def init_app(self, app: FastAPI):
+        logger.opt(colors=True).info(f"Initializing Bot <m>{self.bot_id}</m>...")
+        logger.opt(colors=True).debug(
+            f"With Secret: <m>{self.bot_secret}</m> and Callback URL: <m>{self.callback_url}</m>"
+        )
+        app.post(self.callback_url, status_code=200)(handle_event)
+        app.on_event("shutdown")(self._close_client)
+
     def run(
         self,
         host: str = "127.0.0.1",
@@ -1116,12 +1125,7 @@ def run_bots(
     for key, value in fastapi_kwargs.items():
         setattr(app, key, value)
     for bot in bots:
-        logger.opt(colors=True).info(f"Initializing Bot <m>{bot.bot_id}</m>...")
-        logger.opt(colors=True).debug(
-            f"With Secret: <m>{bot.bot_secret}</m> and Callback URL: <m>{bot.callback_url}</m>"
-        )
-        app.post(bot.callback_url, status_code=200)(handle_event)
-        app.on_event("shutdown")(bot._close_client)
+        bot.init_app(app)
     uvicorn.run(
         app,
         host=host,
