@@ -88,14 +88,14 @@ class MessageSegment(ABC, BaseModel):
 class Text(MessageSegment):
     """文本消息段"""
 
-    type: Literal["text"] = "text"
+    type: Literal["text"] = Field(default="text", repr=False)
     content: str
 
 
 class MentionRobot(MessageSegment):
     """@机器人消息段"""
 
-    type: Literal["mention_robot"] = "mention_robot"
+    type: Literal["mention_robot"] = Field(default="mention_robot", repr=False)
     bot_id: str
     bot_name: str
 
@@ -103,7 +103,7 @@ class MentionRobot(MessageSegment):
 class MentionUser(MessageSegment):
     """@用户消息段"""
 
-    type: Literal["mention_user"] = "mention_user"
+    type: Literal["mention_user"] = Field(default="mention_user", repr=False)
     villa_id: int
     user_id: int
 
@@ -111,14 +111,14 @@ class MentionUser(MessageSegment):
 class MentionAll(MessageSegment):
     """@全体成员消息段"""
 
-    type: Literal["mention_all"] = "mention_all"
+    type: Literal["mention_all"] = Field(default="mention_all", repr=False)
     show_text: str = "全体成员"
 
 
 class RoomLink(MessageSegment):
     """房间链接消息段"""
 
-    type: Literal["room_link"] = "room_link"
+    type: Literal["room_link"] = Field(default="room_link", repr=False)
     villa_id: int
     room_id: int
 
@@ -126,7 +126,7 @@ class RoomLink(MessageSegment):
 class Link(MessageSegment):
     """链接消息段"""
 
-    type: Literal["link"] = "link"
+    type: Literal["link"] = Field(default="link", repr=False)
     url: str
     show_text: str
 
@@ -134,7 +134,7 @@ class Link(MessageSegment):
 class Image(MessageSegment):
     """图片消息段"""
 
-    type: Literal["image"] = "image"
+    type: Literal["image"] = Field(default="image", repr=False)
     url: str
     width: Optional[int] = None
     height: Optional[int] = None
@@ -144,7 +144,7 @@ class Image(MessageSegment):
 class Quote(MessageSegment):
     """引用消息段"""
 
-    type: Literal["quote"] = "quote"
+    type: Literal["quote"] = Field(default="quote", repr=False)
     quoted_message_id: str
     quoted_message_send_time: int
     original_message_id: str
@@ -154,7 +154,7 @@ class Quote(MessageSegment):
 class Post(MessageSegment):
     """帖子消息段"""
 
-    type: Literal["post"] = "post"
+    type: Literal["post"] = Field(default="post", repr=False)
     post_id: str
 
 
@@ -390,6 +390,9 @@ class Message(BaseModel):
 
     def __iter__(self) -> Iterator[MessageSegment]:
         return iter(self.__root__)
+
+    def __repr__(self) -> str:
+        return f"Message({repr(self.__root__)})"
 
     def has_segment_type(self, segment_type: MessageType) -> bool:
         """判断消息是否包含指定类型的消息段
