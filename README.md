@@ -20,64 +20,63 @@ _✨ 米游社大别野Bot Python SDK ✨_
 
 ## 特性
 
-- 基于`FastAPI`和`Pydantic`，异步、快速、高性能！
-- 完整的类型注解支持
-- 便捷的消息构造和发送方法
-- 丰富的消息段和完整的API支持
-- ~~想不出来了~~
+- 基于`FastAPI`和`Pydantic`，异步优先、快速、高性能！
+- 完整的类型注解支持，便于开发。
+- 便捷的消息构造和发送方法。
+- 完整的消息段和API支持。
+- `Serverless`云函数支持。
+- More ~~想不出来了~~
 
 ## 安装
 
-- 使用pip: `pip install villa`
-- 使用poetry: `poetry add villa`
-- 使用pdm: `pdm add villa`
+- 使用 pip: `pip install villa`
+- 使用 poetry: `poetry add villa`
+- 使用 pdm: `pdm add villa`
 
 ## 快速开始
 
-首先你需要一个[米游社大别野](https://dby.miyoushe.com/chat)的Bot，如果没有请先到[机器人开发者社区](https://dby.miyoushe.com/chat/463/20020)(别野ID: OpenVilla)申请，取得`bot_id`、`bot_secret`
+你需要一个[米游社大别野](https://dby.miyoushe.com/chat)的 Bot，可前往大别野[「机器人开发者社区」](https://dby.miyoushe.com/chat/463/20020)(ID: `OpenVilla`)申请，取得`bot_id`、`bot_secret`。
 
 ```python
 from villa import Bot
 from villa.event import SendMessageEvent
 
-bot = Bot(bot_id="your_bot_id", bot_secret="your_bot_secret", callback_url="your_callback_url")
-# 初始化Bot，填写你的bot_id、密钥以及回调地址
+bot = Bot(bot_id="your_bot_id", bot_secret="your_bot_secret", callback_url="your_callback_url_endpoint")
+# 初始化Bot，填写你的bot_id、密钥以及回调地址endpoint
+# 举例：若申请时提供的回调地址为https://域名/callback，这里的callback_url就填`/callback`
 
 @bot.on_startswith("hello")
 async def handler(event: SendMessageEvent):
     await event.send("world!")
-    # 一个简单的处理函数，向你的Bot发送`@Bot hello`，它将会回复你`world`！
+    # 一个简单的处理函数，向你的Bot发送包含`hello`关键词的消息，它将会回复你`world`！
 
 
 if __name__ == "__main__":
     bot.run(host="127.0.0.1", port=13350)
-    # 启动bot，注意，port端口号要和你的回调地址对上
+    # 启动bot，注意，port端口号要和你的回调地址端口对上
 ```
 
 
-## 使用说明
+## 示例
 
-详见`example`文件夹：
-- `single_bot.py`: 单Bot运行
-- `multiple_bots.py`: 多Bot运行
-- `handle_func.py`: 各种处理器介绍
-- `send_message.py`: 各种消息发送方法介绍
+详见 [example](https://github.com/CMHopeSunshine/villa-py/tree/main/example) 文件夹：
 
+- [单 Bot 运行](https://github.com/CMHopeSunshine/villa-py/blob/main/example/single_bot.py)
+- [多 Bot 运行](https://github.com/CMHopeSunshine/villa-py/blob/main/example/multiple_bots.py)
+- [处理器介绍](https://github.com/CMHopeSunshine/villa-py/blob/main/example/handle_func.py)
+- [消息发送方法](https://github.com/CMHopeSunshine/villa-py/blob/main/example/send_message.py)
+- [vercel serverless 部署](https://github.com/CMHopeSunshine/villa-py/blob/main/example/vercel.py)
 
-## 反馈
+## 交流、建议和反馈
 
-目前无论是大别野Bot还是本SDK都在测试开发中，如遇问题请提出issue，感谢支持！
+> 注意：本SDK并非官方SDK
 
-也欢迎来我的大别野【尘世闲游】进行交流~ 
+大别野 Bot 和本 SDK 均为开发测试中，如遇问题请提出 [issue](https://github.com/CMHopeSunshine/villa-py/issues) ，感谢支持！
 
-- 大别野ID: wgiJNaU
-- [Web端链接](https://dby.miyoushe.com/chat/1047/21652)
+也欢迎来我的大别野[「尘世闲游」]((https://dby.miyoushe.com/chat/1047/21652))(ID: `wgiJNaU`)进行交流~ 
 
 ## 相关项目
 
-- [NoneBot2](https://github.com/nonebot/nonebot2) 非常好用的Python跨平台机器人框架！
-- [nonebot-adapter-villa](https://github.com/CMHopeSunshine/nonebot-adapter-villa) NoneBot2的大别野Bot适配器。
-
-推荐有成熟Python开发经验但对NoneBot2不熟悉的小伙伴选择`本SDK`，
-
-对NoneBot2熟悉或希望接触更成熟的生态的小伙伴选择`NoneBot2+Villa适配器`进行开发。
+- [NoneBot2](https://github.com/nonebot/nonebot2) 非常好用的 Python 跨平台机器人框架！
+- [nonebot-adapter-villa](https://github.com/CMHopeSunshine/nonebot-adapter-villa) NoneBot2 的大别野 Bot 适配器。
+- [Herta-villa-SDK](https://github.com/MingxuanGame/Herta-villa-SDK) 另一个大别野 Python SDK。

@@ -3,7 +3,9 @@ from villa.event import SendMessageEvent
 from villa.message import Message, MessageSegment
 
 bot = Bot(
-    bot_id="your_bot_id", bot_secret="your_bot_secret", callback_url="your_callback_url"
+    bot_id="your_bot_id",
+    bot_secret="your_bot_secret",
+    callback_url="your_callback_url_endpoint",
 )
 
 
