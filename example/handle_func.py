@@ -4,7 +4,9 @@ from villa import Bot
 from villa.event import Event, JoinVillaEvent, SendMessageEvent, AddQuickEmoticonEvent
 
 bot = Bot(
-    bot_id="your_bot_id", bot_secret="your_bot_secret", callback_url="your_callback_url"
+    bot_id="your_bot_id",
+    bot_secret="your_bot_secret",
+    callback_url="your_callback_url_endpoint",
 )
 
 """通过bot上的各种处理器来处理事件"""

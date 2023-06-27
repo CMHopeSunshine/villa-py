@@ -1,7 +1,9 @@
 from villa import Bot
 
 bot = Bot(
-    bot_id="your_bot_id", bot_secret="your_bot_secret", callback_url="your_callback_url"
+    bot_id="your_bot_id",
+    bot_secret="your_bot_secret",
+    callback_url="your_callback_url_endpoint",
 )
 # 初始化Bot，填写你的bot_id、密钥以及回调地址
 
