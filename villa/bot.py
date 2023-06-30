@@ -39,10 +39,18 @@ class Bot:
     """机器人密钥"""
     callback_url: str
     """事件回调地址"""
+    wait_util_complete: bool = False
+    """是否等待事件处理全部完成后再响应"""
     _bot_info: Optional[Robot] = None
     """机器人信息"""
 
-    def __init__(self, bot_id: str, bot_secret: str, callback_url: str):
+    def __init__(
+        self,
+        bot_id: str,
+        bot_secret: str,
+        callback_url: str,
+        wait_util_complete: bool = False,
+    ):
         """初始化一个 Bot 实例
 
         参数:
@@ -50,9 +58,10 @@ class Bot:
             bot_secret: 机器人密钥
             callback_url: 事件回调地址
         """
-        self.bot_id: str = bot_id
-        self.bot_secret: str = bot_secret
-        self.callback_url: str = callback_url
+        self.bot_id = bot_id
+        self.bot_secret = bot_secret
+        self.callback_url = callback_url
+        self.wait_util_complete = wait_util_complete
         self._client = httpx.AsyncClient(
             base_url="https://bbs-api.miyoushe.com/vila/api/bot/platform/"
         )
@@ -1175,7 +1184,10 @@ async def handle_event(
             status_code=400, content={"retcode": -1, "msg": "Invalid data"}
         )
     else:
-        backgroud_tasks.add_task(bot._handle_event, event=event)
+        if bot.wait_util_complete:
+            await bot._handle_event(event=event)
+        else:
+            backgroud_tasks.add_task(bot._handle_event, event=event)
     return JSONResponse(status_code=200, content={"retcode": 0, "message": "success"})
 
 
