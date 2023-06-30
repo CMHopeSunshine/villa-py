@@ -11,6 +11,7 @@ bot = Bot(
     bot_id="your_bot_id",
     bot_secret="your_bot_secret",
     callback_url="your_callback_url_endpoint",
+    # wait_util_complete=True 如果serverless服务商不支持后台任务，则需要将该参数设为True
 )
 # 初始化Bot，填写你的bot_id、密钥以及回调地址
 
