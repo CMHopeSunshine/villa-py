@@ -53,7 +53,8 @@ logger.remove()
 logger_id = logger.add(
     sys.stdout,
     level=0,
-    diagnose=False,
+    diagnose=True,
+    backtrace=False,
     filter=default_filter,
     format=default_format,
 )
