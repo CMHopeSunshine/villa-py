@@ -51,6 +51,9 @@ class Event(BaseModel):
         """机器人ID"""
         return self.robot.template.id
 
+    def get_event_name(self) -> str:
+        return f"<b><y>[{self.__class__.__name__}]</y></b>"
+
     def get_event_description(self) -> str:
         return escape_tag(str(self.dict()))
 

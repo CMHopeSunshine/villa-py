@@ -1,7 +1,8 @@
 import re
 import asyncio
 from itertools import product
-from typing import Any, Set, Dict, List, Type, Union, Literal, Optional
+from collections import defaultdict
+from typing import Any, Set, Dict, List, Type, Union, Literal, Optional, DefaultDict
 
 import httpx
 import uvicorn
@@ -11,17 +12,18 @@ from fastapi import FastAPI, BackgroundTasks
 
 from .models import *
 from .message import Message
-from .exception import ActionFailed
+from .utils import escape_tag
+from .handle import EventHandler
 from .message import MessageSegment
 from .log import logger, _log_patcher
-from .utils import run_sync, escape_tag
+from .typing import T_Func, T_Handler
 from .message import Link as LinkSegment
 from .message import Post as PostSegment
 from .message import Text as TextSegment
 from .message import Image as ImageSegment
 from .store import get_app, get_bot, store_bot
 from .message import RoomLink as RoomLinkSegment
-from .typing import T_Func, T_Handler, EventHandler
+from .exception import ActionFailed, StopPropagation
 from .message import MentionAll as MentionAllSegment
 from .message import MentionUser as MentionUserSegment
 from .message import MentionRobot as MentionRobotSegment
@@ -31,7 +33,8 @@ from .event import Event, SendMessageEvent, event_classes, pre_handle_event
 class Bot:
     """Villa Bot"""
 
-    _event_handlers: List[EventHandler] = []
+    _event_handlers: DefaultDict[int, List[EventHandler]] = defaultdict(list)
+    """事件处理函数"""
     _client: httpx.AsyncClient
     bot_id: str
     """机器人 Id"""
@@ -116,12 +119,11 @@ class Bot:
         """
 
         def _decorator(func: T_Handler) -> T_Handler:
-            self._event_handlers.append(
+            self._event_handlers[priority].append(
                 EventHandler(
                     event_type=event_type, func=func, block=block, priority=priority
                 )
             )
-            self._event_handlers.sort(key=lambda x: x.priority)
             return func
 
         return _decorator
@@ -137,7 +139,7 @@ class Bot:
         """
 
         def _decorator(func: T_Handler) -> T_Handler:
-            self._event_handlers.append(
+            self._event_handlers[priority].append(
                 EventHandler(
                     event_type=(SendMessageEvent,),
                     func=func,
@@ -145,7 +147,6 @@ class Bot:
                     priority=priority,
                 )
             )
-            self._event_handlers.sort(key=lambda x: x.priority)
             return func
 
         return _decorator
@@ -172,7 +173,7 @@ class Bot:
         startswith = tuple(set(p + s for p, s in list(product(prefix, startswith))))
 
         def _decorator(func: T_Handler) -> T_Handler:
-            self._event_handlers.append(
+            self._event_handlers[priority].append(
                 EventHandler(
                     event_type=(SendMessageEvent,),
                     func=func,
@@ -181,7 +182,6 @@ class Bot:
                     startswith=startswith or None,
                 )
             )
-            self._event_handlers.sort(key=lambda x: x.priority)
             return func
 
         return _decorator
@@ -198,7 +198,7 @@ class Bot:
         """
 
         def _decorator(func: T_Handler) -> T_Handler:
-            self._event_handlers.append(
+            self._event_handlers[priority].append(
                 EventHandler(
                     event_type=(SendMessageEvent,),
                     func=func,
@@ -207,7 +207,6 @@ class Bot:
                     endswith=endswith or None,
                 )
             )
-            self._event_handlers.sort(key=lambda x: x.priority)
             return func
 
         return _decorator
@@ -224,7 +223,7 @@ class Bot:
         """
 
         def _decorator(func: T_Handler) -> T_Handler:
-            self._event_handlers.append(
+            self._event_handlers[priority].append(
                 EventHandler(
                     event_type=(SendMessageEvent,),
                     func=func,
@@ -233,7 +232,6 @@ class Bot:
                     keywords=keywords or None,
                 )
             )
-            self._event_handlers.sort(key=lambda x: x.priority)
             return func
 
         return _decorator
@@ -254,7 +252,7 @@ class Bot:
             pattern = re.compile(pattern)
 
         def _decorator(func: T_Handler) -> T_Handler:
-            self._event_handlers.append(
+            self._event_handlers[priority].append(
                 EventHandler(
                     event_type=(SendMessageEvent,),
                     func=func,
@@ -263,7 +261,6 @@ class Bot:
                     regex=pattern,
                 )
             )
-            self._event_handlers.sort(key=lambda x: x.priority)
             return func
 
         return _decorator
@@ -885,52 +882,20 @@ class Bot:
             event: 事件
         """
         is_handled = False
-        for event_handler in self._event_handlers:
-            if isinstance(event, event_handler.event_type):
-                if isinstance(event, SendMessageEvent):
-                    if (
-                        event_handler.startswith is not None
-                        and not event.message.startswith(event_handler.startswith)
-                    ):
-                        logger.opt(colors=True).trace(
-                            f"<b><y>[{event.__class__.__name__}]</y></b> not startswith \"{'|'.join(event_handler.startswith)}\", pass"
-                        )
-                        continue
-                    if (
-                        event_handler.endswith is not None
-                        and not event.message.endswith(event_handler.endswith)
-                    ):
-                        logger.opt(colors=True).trace(
-                            f"<b><y>[{event.__class__.__name__}]</y></b> not endswith \"{'|'.join(event_handler.endswith)}\", pass"
-                        )
-                        continue
-                    if event_handler.keywords is not None and not any(
-                        keyword in event.message for keyword in event_handler.keywords
-                    ):
-                        logger.opt(colors=True).trace(
-                            f"<b><y>[{event.__class__.__name__}]</y></b> not contains \"{'|'.join(event_handler.keywords)}\", pass"
-                        )
-                        continue
-                    if event_handler.regex is not None and not event.message.match(
-                        event_handler.regex
-                    ):
-                        logger.opt(colors=True).trace(
-                            f'<b><y>[{event.__class__.__name__}]</y></b> not match "{event_handler.regex}", <y>pass</y>'
-                        )
-                        continue
-                logger.opt(colors=True).info(
-                    f"<b><y>[{event.__class__.__name__}]</y></b> will be handled by <y>{event_handler}</y>"
+        for priority in sorted(self._event_handlers.keys()):
+            try:
+                await asyncio.gather(
+                    *[handler._run(event) for handler in self._event_handlers[priority]]
                 )
-                await run_handler(event_handler, event)
                 is_handled = True
-                if event_handler.block:
-                    logger.opt(colors=True).debug(
-                        f"<b><y>[{event.__class__.__name__}]</y></b> stop handled by <y>{event_handler}</y>"
-                    )
-                    break
+            except StopPropagation as e:
+                logger.opt(colors=True).debug(
+                    f"<b><y>[{event.__class__.__name__}]</y></b> stop handled by <y>{e.handler}</y>"
+                )
+                break
         if is_handled:
             logger.opt(colors=True).success(
-                f"<b><y>[{event.__class__.__name__}]</y></b> handle completed"
+                f"{event.get_event_name()} handle completed"
             )
 
     async def _parse_message_content(self, message: Message) -> MessageContentInfo:
@@ -1189,19 +1154,6 @@ async def handle_event(
         else:
             backgroud_tasks.add_task(bot._handle_event, event=event)
     return JSONResponse(status_code=200, content={"retcode": 0, "message": "success"})
-
-
-async def run_handler(handler: EventHandler, event: Event):
-    """运行事件处理器"""
-    try:
-        if asyncio.iscoroutinefunction(handler.func):
-            await handler.func(event)
-        else:
-            await run_sync(handler.func)(event)
-    except Exception as e:
-        logger.opt(exception=e).error(
-            f"Error when running {handler} for {event.__class__.__name__}"
-        )
 
 
 def on_startup(func: T_Func):
