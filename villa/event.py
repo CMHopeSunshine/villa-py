@@ -215,7 +215,7 @@ class SendMessageEvent(Event):
             message = Message(message)
         if mention_sender:
             message.insert(
-                0, MessageSegment.mention_user(self.from_user_id, self.villa_id)
+                0, MessageSegment.mention_user(self.villa_id, self.from_user_id)
             )
         if quote_message:
             message.append(MessageSegment.quote(self.msg_uid, self.send_at))
