@@ -2,7 +2,7 @@ import sys
 import json
 import inspect
 from enum import Enum, IntEnum
-from typing import Any, List, Union, Literal, Optional
+from typing import Any, Dict, List, Union, Literal, Optional
 
 from pydantic import Field, BaseModel, validator
 
@@ -128,6 +128,7 @@ class VillaRoomLink(BaseModel):
 class Link(BaseModel):
     type: Literal["link"] = "link"
     url: str
+    requires_bot_access_token: bool
 
     show_text: str = Field(exclude=True)
 
@@ -149,6 +150,22 @@ class Image(BaseModel):
     file_size: Optional[int] = None
 
 
+class PreviewLink(BaseModel):
+    icon_url: str
+    image_url: str
+    is_internal_link: bool
+    title: str
+    content: str
+    url: str
+    source_name: str
+
+
+class Badge(BaseModel):
+    icon_url: str
+    text: str
+    url: str
+
+
 class PostMessageContent(BaseModel):
     post_id: str
 
@@ -164,6 +181,8 @@ class TextMessageContent(BaseModel):
     text: str
     entities: List[TextEntity] = Field(default_factory=list)
     images: Optional[List[Image]] = None
+    preview_link: Optional[PreviewLink] = None
+    badge: Optional[Badge] = None
 
 
 class ImageMessageContent(Image):
@@ -184,7 +203,7 @@ class QuoteInfo(BaseModel):
 
 class User(BaseModel):
     portrait_uri: str = Field(alias="portraitUri")
-    extra: dict
+    extra: Dict[str, Any]
     name: str
     alias: str
     id: str
@@ -203,6 +222,7 @@ class Trace(BaseModel):
     action_type: int
     bot_msg_id: str
     client: str
+    env: str
     rong_sdk_version: str
 
 
@@ -408,6 +428,8 @@ __all__ = [
     "Trace",
     "ImageSize",
     "Image",
+    "PreviewLink",
+    "Badge",
     "MessageContentInfo",
     "Room",
     "RoomType",

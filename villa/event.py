@@ -137,7 +137,7 @@ class SendMessageEvent(Event):
         text = content["text"]
         entities = content["entities"]
         if not entities:
-            return Message(MessageSegment.text(text))
+            return Message(MessageSegment.plain_text(text))
         text = text.encode("utf-16")
         last_offset: int = 0
         last_length: int = 0
@@ -148,7 +148,7 @@ class SendMessageEvent(Event):
             entity_detail = entity["entity"]
             if offset != end_offset:
                 msg.append(
-                    MessageSegment.text(
+                    MessageSegment.plain_text(
                         text[((end_offset + 1) * 2) : ((offset + 1) * 2)].decode(
                             "utf-16"
                         )
@@ -189,7 +189,7 @@ class SendMessageEvent(Event):
             last_length = length
         end_offset = last_offset + last_length
         if last_text := text[(end_offset + 1) * 2 :].decode("utf-16"):
-            msg.append(MessageSegment.text(last_text))
+            msg.append(MessageSegment.plain_text(last_text))
         data["message"] = msg
         return data
 

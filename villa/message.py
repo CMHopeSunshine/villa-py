@@ -4,6 +4,7 @@ from typing_extensions import Self
 from typing import List, Tuple, Union, Literal, Iterable, Iterator, Optional, overload
 
 from pydantic import Field, BaseModel
+from pydantic.utils import get_args  # type: ignore
 
 MessageType = Literal[
     "text",
@@ -15,6 +16,8 @@ MessageType = Literal[
     "image",
     "quote",
     "post",
+    "preview_link",
+    "badge",
 ]
 
 
@@ -23,7 +26,7 @@ class MessageSegment(ABC, BaseModel):
     """消息段基类"""
 
     @staticmethod
-    def text(text: str) -> "Text":
+    def plain_text(text: str) -> "Text":
         return Text(content=text)
 
     @staticmethod
@@ -43,8 +46,16 @@ class MessageSegment(ABC, BaseModel):
         return RoomLink(villa_id=villa_id, room_id=room_id)
 
     @staticmethod
-    def link(url: str, show_text: Optional[str] = None) -> "Link":
-        return Link(url=url, show_text=show_text or url)
+    def link(
+        url: str,
+        show_text: Optional[str] = None,
+        requires_bot_access_token: bool = False,
+    ) -> "Link":
+        return Link(
+            url=url,
+            show_text=show_text or url,
+            requires_bot_access_token=requires_bot_access_token,
+        )
 
     @staticmethod
     def post(post_id: str) -> "Post":
@@ -68,9 +79,33 @@ class MessageSegment(ABC, BaseModel):
             original_message_send_time=message_send_time,
         )
 
+    @staticmethod
+    def preview_link(
+        icon_url: str,
+        image_url: str,
+        is_internal_link: bool,
+        title: str,
+        content: str,
+        url: str,
+        source_name: str,
+    ) -> "PreviewLink":
+        return PreviewLink(
+            icon_url=icon_url,
+            image_url=image_url,
+            is_internal_link=is_internal_link,
+            title=title,
+            content=content,
+            url=url,
+            source_name=source_name,
+        )
+
+    @staticmethod
+    def badge(icon_url: str, text: str, url: str) -> "Badge":
+        return Badge(icon_url=icon_url, text=text, url=url)
+
     def __add__(self, other: Union[str, "MessageSegment", "Message"]) -> "Message":
         if isinstance(other, str):
-            return Message([self, MessageSegment.text(other)])
+            return Message([self, MessageSegment.plain_text(other)])
         elif isinstance(other, MessageSegment):
             return Message([self, other])
         elif isinstance(other, Message):
@@ -129,6 +164,7 @@ class Link(MessageSegment):
     type: Literal["link"] = Field(default="link", repr=False)
     url: str
     show_text: str
+    requires_bot_access_token: bool
 
 
 class Image(MessageSegment):
@@ -156,6 +192,30 @@ class Post(MessageSegment):
 
     type: Literal["post"] = Field(default="post", repr=False)
     post_id: str
+
+
+class PreviewLink(MessageSegment):
+    """预览链接(卡片)消息段"""
+
+    type: Literal["preview_link"] = Field(default="preview_link", repr=False)
+    icon_url: str
+    image_url: str
+    is_internal_link: bool
+    title: str
+    content: str
+    url: str
+    source_name: str
+
+
+class Badge(MessageSegment):
+    """徽标消息段
+
+    用于在消息下方显示徽标，不支持单独发送"""
+
+    type: Literal["badge"] = Field(default="badge", repr=False)
+    icon_url: str
+    text: str
+    url: str
 
 
 class Message(BaseModel):
@@ -187,7 +247,7 @@ class Message(BaseModel):
             raise TypeError(f"unsupported type: {type(message)}")
         super().__init__(__root__=message)
 
-    def text(self, content: str) -> Self:
+    def plain_text(self, content: str) -> Self:
         """纯文本消息
 
         参数:
@@ -252,19 +312,31 @@ class Message(BaseModel):
         self.__root__.append(RoomLink(villa_id=villa_id, room_id=room_id))
         return self
 
-    def link(self, url: str, show_text: Optional[str] = None) -> Self:
+    def link(
+        self,
+        url: str,
+        show_text: Optional[str] = None,
+        requires_bot_access_token: bool = False,
+    ) -> Self:
         """说明
 
         详细说明
 
         参数:
-            url: 参数说明
-            text: 参数说明. 默认为 None.
+            url: 链接地址
+            show_text: 链接显示的文本. 为 None 时与地址保持一致.
+            requires_bot_access_token: 访问时是否需要带上含有用户信息的token. 默认为 False.
 
         返回:
             Self: 返回说明
         """
-        self.__root__.append(Link(url=url, show_text=show_text or url))
+        self.__root__.append(
+            Link(
+                url=url,
+                show_text=show_text or url,
+                requires_bot_access_token=requires_bot_access_token,
+            )
+        )
         return self
 
     def image(
@@ -322,6 +394,47 @@ class Message(BaseModel):
         self.__root__.append(Post(post_id=post_id))
         return self
 
+    def preview_link(
+        self,
+        icon_url: str,
+        image_url: str,
+        is_internal_link: bool,
+        title: str,
+        content: str,
+        url: str,
+        source_name: str,
+    ) -> Self:
+        """预览链接(卡片)消息
+
+        参数:
+            icon_url: 参数说明
+            image_url: 参数说明
+            is_internal_link: 参数说明
+            title: 参数说明
+            content: 参数说明
+            url: 参数说明
+            source_name: 参数说明
+
+        返回:
+            Self: 返回说明
+        """
+        self.__root__.append(
+            PreviewLink(
+                icon_url=icon_url,
+                image_url=image_url,
+                is_internal_link=is_internal_link,
+                title=title,
+                content=content,
+                url=url,
+                source_name=source_name,
+            )
+        )
+        return self
+
+    def badge(self, icon_url: str, text: str, url: str) -> Self:
+        self.__root__.append(Badge(icon_url=icon_url, text=text, url=url))
+        return self
+
     def insert(self, index: int, segment: Union[str, MessageSegment]):
         """在指定位置插入消息段
 
@@ -349,7 +462,7 @@ class Message(BaseModel):
             segment = Text(content=segment)
         self.__root__.append(segment)
 
-    def plain_text(self) -> str:
+    def get_plain_text(self) -> str:
         """获取纯文本消息内容"""
         return "".join(
             [segment.content for segment in self.__root__ if isinstance(segment, Text)]
@@ -357,7 +470,7 @@ class Message(BaseModel):
 
     def __contains__(self, item: str) -> bool:
         """检查消息的纯文本内容是否包含指定字符串"""
-        return item in self.plain_text()
+        return item in self.get_plain_text()
 
     def __len__(self) -> int:
         return len(self.__root__)
@@ -414,7 +527,7 @@ class Message(BaseModel):
         返回:
             bool: 是否以指定字符串开头
         """
-        return self.plain_text().startswith(text)
+        return self.get_plain_text().startswith(text)
 
     def endswith(self, text: Union[str, Tuple[str, ...]]) -> bool:
         """判断消息的纯文本部分是否以指定字符串结尾
@@ -425,7 +538,7 @@ class Message(BaseModel):
         返回:
             bool: 是否以指定字符串结尾
         """
-        return self.plain_text().endswith(text)
+        return self.get_plain_text().endswith(text)
 
     def match(self, pattern: Union[str, re.Pattern]) -> Optional[re.Match]:
         """使用正则表达式匹配消息的纯文本部分
@@ -436,7 +549,7 @@ class Message(BaseModel):
         返回:
             Optional[re.Match]: 匹配结果
         """
-        return re.match(pattern, self.plain_text())
+        return re.match(pattern, self.get_plain_text())
 
     def search(self, pattern: Union[str, re.Pattern]) -> Optional[re.Match]:
         """使用正则表达式搜索消息的纯文本部分
@@ -447,7 +560,7 @@ class Message(BaseModel):
         返回:
             Optional[re.Match]: 匹配结果
         """
-        return re.search(pattern, self.plain_text())
+        return re.search(pattern, self.get_plain_text())
 
     @overload
     def __getitem__(self, __args: int) -> MessageSegment:
@@ -500,7 +613,7 @@ class Message(BaseModel):
             __args: text消息段
 
         返回:
-            Message: 消息段类型为text的第 `__args[1]` 个消息段
+            Text: 消息段类型为text的第 `__args[1]` 个消息段
         """
         ...
 
@@ -513,7 +626,7 @@ class Message(BaseModel):
             __args: mention_user消息段
 
         返回:
-            Message: 消息段类型为mention_user的第 `__args[1]` 个消息段
+            MentionUser: 消息段类型为mention_user的第 `__args[1]` 个消息段
         """
         ...
 
@@ -526,7 +639,7 @@ class Message(BaseModel):
             __args: mention_all消息段
 
         返回:
-            Message: 消息段类型为mention_all的第 `__args[1]` 个消息段
+            MentionAll: 消息段类型为mention_all的第 `__args[1]` 个消息段
         """
         ...
 
@@ -539,7 +652,7 @@ class Message(BaseModel):
             __args: mention_robot消息段
 
         返回:
-            Message: 消息段类型为mention_robot的第 `__args[1]` 个消息段
+            MentionRobot: 消息段类型为mention_robot的第 `__args[1]` 个消息段
         """
         ...
 
@@ -552,7 +665,7 @@ class Message(BaseModel):
             __args: room_link消息段
 
         返回:
-            Message: 消息段类型为room_link的第 `__args[1]` 个消息段
+            RoomLink: 消息段类型为room_link的第 `__args[1]` 个消息段
         """
         ...
 
@@ -563,7 +676,7 @@ class Message(BaseModel):
             __args: link消息段
 
         返回:
-            Message: 消息段类型为link的第 `__args[1]` 个消息段
+            Link: 消息段类型为link的第 `__args[1]` 个消息段
         """
         ...
 
@@ -574,7 +687,7 @@ class Message(BaseModel):
             __args: image消息段
 
         返回:
-            Message: 消息段类型为image的第 `__args[1]` 个消息段
+            Image: 消息段类型为image的第 `__args[1]` 个消息段
         """
         ...
 
@@ -585,7 +698,42 @@ class Message(BaseModel):
             __args: quote消息段
 
         返回:
-            Message: 消息段类型为quote的第 `__args[1]` 个消息段
+            Quote: 消息段类型为quote的第 `__args[1]` 个消息段
+        """
+        ...
+
+    @overload
+    def __getitem__(self, __args: Tuple[Literal["post"], int]) -> Optional[Post]:
+        """
+        参数:
+            __args: post消息段
+
+        返回:
+            Post: 消息段类型为post的第 `__args[1]` 个消息段
+        """
+        ...
+
+    @overload
+    def __getitem__(
+        self, __args: Tuple[Literal["preview_link"], int]
+    ) -> Optional[PreviewLink]:
+        """
+        参数:
+            __args: preview_link消息段
+
+        返回:
+            PreviewLink: 消息段类型为preview_link的第 `__args[1]` 个消息段
+        """
+        ...
+
+    @overload
+    def __getitem__(self, __args: Tuple[Literal["badge"], int]) -> Optional[Badge]:
+        """
+        参数:
+            __args: badge消息段
+
+        返回:
+            Badge: 消息段类型为badge的第 `__args[1]` 个消息段
         """
         ...
 
@@ -598,17 +746,7 @@ class Message(BaseModel):
             return self.__root__.__getitem__(arg1)
         elif isinstance(arg1, slice) and arg2 is None:
             return Message(self.__root__.__getitem__(arg1))
-        elif isinstance(arg1, str) and arg1 in (
-            "text",
-            "mention_user",
-            "mention_all",
-            "mention_robot",
-            "room_link",
-            "link",
-            "image",
-            "quote",
-            "post",
-        ):
+        elif isinstance(arg1, str) and arg1 in get_args(MessageType):  # type: ignore
             if arg2 is None:
                 return Message([seg for seg in self.__root__ if seg.type == arg1])
             elif isinstance(arg2, int):

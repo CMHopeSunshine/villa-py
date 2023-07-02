@@ -27,7 +27,7 @@ async def keyword_handler2(event: SendMessageEvent):
     )
 
     # 也可以通过 += 进行拼接
-    msg = MessageSegment.text("开头文字")  # 纯文本
+    msg = MessageSegment.plain_text("开头文字")  # 纯文本
     msg += MessageSegment.quote(event.msg_uid, event.send_at)  # 引用消息
     msg += MessageSegment.room_link(
         villa_id=event.villa_id, room_id=event.room_id
@@ -38,6 +38,20 @@ async def keyword_handler2(event: SendMessageEvent):
         "https://www.miyoushe.com/_nuxt/img/miHoYo_Game.2457753.png"
     )  # 图片
     msg += MessageSegment.link("https://www.miyoushe.com/")  # 链接
+    msg += MessageSegment.badge(
+        "https://upload-bbs.mihoyo.com/vila_bot/bbs_origin_badge.png",
+        "徽标",
+        "https://mihoyo.com",
+    )  # 消息下方带徽标
+    msg += MessageSegment.preview_link(
+        icon_url="https://www.bilibili.com/favicon.ico",
+        image_url="https://i2.hdslb.com/bfs/archive/21b82856df6b8a2ae759dddac66e2c79d41fe6bc.jpg@672w_378h_1c_!web-home-common-cover.avif",
+        is_internal_link=False,
+        title="崩坏3第一偶像爱酱",
+        content="「海的女儿」——《崩坏3》S级律者角色「死生之律者」宣传PV",
+        url="https://www.bilibili.com/video/BV1Mh4y1M79t?spm_id_from=333.1007.tianma.2-2-5.click",
+        source_name="哔哩哔哩",
+    )  # 预览链接(卡片)
 
     # 也可以用 Message 进行链式调用
     msg = (
@@ -48,7 +62,12 @@ async def keyword_handler2(event: SendMessageEvent):
         .mention_all()  # @全体成员
         .image("https://www.miyoushe.com/_nuxt/img/miHoYo_Game.2457753.png")  # 图片
         .link("https://www.miyoushe.com/")  # 链接
-        .text("结尾文字")  # 纯文本
+        .badge(
+            "https://upload-bbs.mihoyo.com/vila_bot/bbs_origin_badge.png",
+            "徽标",
+            "https://mihoyo.com",
+        )  # 消息下方带徽标
+        .plain_text("结尾文字")  # 纯文本
     )
 
     # 可以转发米游社社区中的帖子

@@ -19,7 +19,6 @@ from .message import MessageSegment
 from .log import logger, _log_patcher
 from .typing import T_Func, T_Handler
 from .message import Link as LinkSegment
-from .message import Post as PostSegment
 from .message import Text as TextSegment
 from .message import Image as ImageSegment
 from .store import get_app, get_bot, store_bot
@@ -281,7 +280,7 @@ class Bot:
             str: 消息 ID
         """
         if isinstance(message, str):
-            message = MessageSegment.text(message)
+            message = MessageSegment.plain_text(message)
         if isinstance(message, MessageSegment):
             message = Message(message)
         content_info = await self._parse_message_content(message)
@@ -905,6 +904,14 @@ class Bot:
         if quote := message["quote", 0]:
             quote = QuoteInfo(**quote.dict())
 
+        if badge := message["badge", 0]:
+            badge = Badge(**badge.dict())
+
+        if preview_link := message["preview_link", 0]:
+            preview_link = PreviewLink(**preview_link.dict())
+
+        post = message["post", 0]
+
         if images_msg := (message["image"] or None):  # type: ignore
             images_msg: List[ImageSegment]
             images = [
@@ -919,11 +926,6 @@ class Bot:
             ]
         else:
             images = None
-        if posts_msg := (message["post"] or None):  # type: ignore
-            posts_msg: List[PostSegment]
-            post_ids = [seg.post_id for seg in posts_msg]
-        else:
-            post_ids = None
         cal_len = lambda x: len(x.encode("utf-16")) // 2 - 1
         message_text = ""
         message_offset = 0
@@ -931,7 +933,7 @@ class Bot:
         mentioned = MentionedInfo(type=MentionType.PART)
         for seg in message:  # type: ignore
             try:
-                if seg.type in ("quote", "image", "post"):
+                if seg.type in ("quote", "image", "post", "preview_link", "badge"):
                     continue
                 if isinstance(seg, TextSegment):
                     seg_text = seg.content
@@ -1002,7 +1004,11 @@ class Bot:
                         TextEntity(
                             offset=message_offset,
                             length=length,
-                            entity=Link(url=seg.url, show_text=seg.show_text),
+                            entity=Link(
+                                url=seg.url,
+                                show_text=seg.show_text,
+                                requires_bot_access_token=seg.requires_bot_access_token,
+                            ),
                         )
                     )
                 message_offset += length
@@ -1016,38 +1022,32 @@ class Bot:
         if not (message_text or entities):
             if images:
                 if len(images) > 1:
-                    logger.warning(
-                        "Sending multiple images in one message will not be visible on the web side!"
+                    content = TextMessageContent(
+                        text="\u200B",
+                        images=images,
+                        preview_link=preview_link,
+                        badge=badge,
                     )
-                    content = TextMessageContent(text="\u200B", images=images)
                 else:
                     content = ImageMessageContent(**images[0].dict())
-            elif post_ids:
-                if len(post_ids) > 1:
-                    logger.opt(colors=True).warning(
-                        f"Only support one post in one message, so use the last one <m>{post_ids[-1]}</m>!"
-                    )
-                content = PostMessageContent(post_id=post_ids[-1])
+            elif preview_link:
+                content = TextMessageContent(
+                    text="\u200B", preview_link=preview_link, badge=badge
+                )
+            elif post:
+                content = PostMessageContent(post_id=post.post_id)
             else:
                 raise ValueError("message content is empty")
         else:
-            if images and message_text:
-                logger.warning(
-                    "When a message is accompanied by text and image, image will not visible on the web side!"
-                )
-            if post_ids and message_text:
-                logger.warning(
-                    "When a message is accompanied by text and post, post will not visible!"
-                )
             content = TextMessageContent(
-                text=message_text, entities=entities, images=images
+                text=message_text,
+                entities=entities,
+                images=images,
+                preview_link=preview_link,
+                badge=badge,
             )
 
-        return MessageContentInfo(
-            content=content,
-            mentionedInfo=mentioned,
-            quote=quote,
-        )
+        return MessageContentInfo(content=content, mentionedInfo=mentioned, quote=quote)
 
     def init_app(self, app: FastAPI):
         if self.callback_endpoint is not None:
