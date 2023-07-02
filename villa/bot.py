@@ -1,6 +1,7 @@
 import re
 import asyncio
 from itertools import product
+from urllib.parse import urlparse
 from collections import defaultdict
 from typing import Any, Set, Dict, List, Type, Union, Literal, Optional, DefaultDict
 
@@ -40,7 +41,7 @@ class Bot:
     """机器人 Id"""
     bot_secret: str
     """机器人密钥"""
-    callback_url: str
+    callback_endpoint: Optional[str] = None
     """事件回调地址"""
     wait_util_complete: bool = False
     """是否等待事件处理全部完成后再响应"""
@@ -51,7 +52,7 @@ class Bot:
         self,
         bot_id: str,
         bot_secret: str,
-        callback_url: str,
+        callback_url: Optional[str] = None,
         wait_util_complete: bool = False,
     ):
         """初始化一个 Bot 实例
@@ -63,7 +64,8 @@ class Bot:
         """
         self.bot_id = bot_id
         self.bot_secret = bot_secret
-        self.callback_url = callback_url
+        if callback_url is not None:
+            self.callback_endpoint = urlparse(callback_url).path
         self.wait_util_complete = wait_util_complete
         self._client = httpx.AsyncClient(
             base_url="https://bbs-api.miyoushe.com/vila/api/bot/platform/"
@@ -1048,12 +1050,17 @@ class Bot:
         )
 
     def init_app(self, app: FastAPI):
-        logger.opt(colors=True).info(f"Initializing Bot <m>{self.bot_id}</m>...")
-        logger.opt(colors=True).debug(
-            f"With Secret: <m>{self.bot_secret}</m> and Callback URL: <m>{self.callback_url}</m>"
-        )
-        app.post(self.callback_url, status_code=200)(handle_event)
-        app.on_event("shutdown")(self._close_client)
+        if self.callback_endpoint is not None:
+            logger.opt(colors=True).info(f"Initializing Bot <m>{self.bot_id}</m>...")
+            logger.opt(colors=True).debug(
+                f"With Secret: <m>{self.bot_secret}</m> and Callback Endpoint: <m>{self.callback_endpoint}</m>"
+            )
+            app.post(self.callback_endpoint, status_code=200)(handle_event)
+            app.on_event("shutdown")(self._close_client)
+        else:
+            logger.opt(colors=True).warning(
+                f"Bot <m>{self.bot_id}</m> missing callback url endpoint."
+            )
 
     def run(
         self,
