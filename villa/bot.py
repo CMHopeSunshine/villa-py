@@ -8,6 +8,7 @@ from typing import Any, Set, Dict, List, Type, Union, Literal, Optional, Default
 import httpx
 import uvicorn
 from pydantic import parse_obj_as
+from httpx._types import TimeoutTypes
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, BackgroundTasks
 
@@ -53,6 +54,7 @@ class Bot:
         bot_secret: str,
         callback_url: Optional[str] = None,
         wait_util_complete: bool = False,
+        api_timeout: TimeoutTypes = 10,
     ):
         """初始化一个 Bot 实例
 
@@ -67,7 +69,8 @@ class Bot:
             self.callback_endpoint = urlparse(callback_url).path
         self.wait_util_complete = wait_util_complete
         self._client = httpx.AsyncClient(
-            base_url="https://bbs-api.miyoushe.com/vila/api/bot/platform/"
+            base_url="https://bbs-api.miyoushe.com/vila/api/bot/platform/",
+            timeout=api_timeout,
         )
         store_bot(self)
 
