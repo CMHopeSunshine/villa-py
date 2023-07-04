@@ -3,8 +3,8 @@ from abc import ABC
 from typing_extensions import Self
 from typing import List, Tuple, Union, Literal, Iterable, Iterator, Optional, overload
 
-from pydantic import Field, BaseModel
 from pydantic.utils import get_args  # type: ignore
+from pydantic import Field, BaseModel, root_validator
 
 MessageType = Literal[
     "text",
@@ -34,8 +34,10 @@ class MessageSegment(ABC, BaseModel):
         return MentionRobot(bot_id=bot_id, bot_name=bot_name)
 
     @staticmethod
-    def mention_user(villa_id: int, user_id: int) -> "MentionUser":
-        return MentionUser(villa_id=villa_id, user_id=user_id)
+    def mention_user(
+        user_id: int, user_name: Optional[str] = None, villa_id: Optional[int] = None
+    ) -> "MentionUser":
+        return MentionUser(user_id=user_id, user_name=user_name, villa_id=villa_id)
 
     @staticmethod
     def mention_all(show_text: str = "全体成员") -> "MentionAll":
@@ -139,8 +141,15 @@ class MentionUser(MessageSegment):
     """@用户消息段"""
 
     type: Literal["mention_user"] = Field(default="mention_user", repr=False)
-    villa_id: int
     user_id: int
+    user_name: Optional[str] = None
+    villa_id: Optional[int] = None
+
+    @root_validator
+    def _(cls, values):
+        if values.get("user_name") is None and values.get("villa_id") is None:
+            raise ValueError("user_name和villa_id必须至少有一个不为None")
+        return values
 
 
 class MentionAll(MessageSegment):
@@ -264,7 +273,12 @@ class Message(BaseModel):
         self.__root__.append(Text(content=content))
         return self
 
-    def mention_user(self, villa_id: int, user_id: int) -> Self:
+    def mention_user(
+        self,
+        user_id: int,
+        user_name: Optional[str] = None,
+        villa_id: Optional[int] = None,
+    ) -> Self:
         """提及(@at)消息
 
         参数:
@@ -274,7 +288,9 @@ class Message(BaseModel):
         返回:
             Self: 消息对象
         """
-        self.__root__.append(MentionUser(villa_id=villa_id, user_id=user_id))
+        self.__root__.append(
+            MentionUser(user_id=user_id, user_name=user_name, villa_id=villa_id)
+        )
         return self
 
     def mention_all(self) -> Self:

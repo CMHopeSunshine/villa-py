@@ -7,7 +7,7 @@ from pydantic import BaseModel, root_validator
 from .store import get_bot
 from .utils import escape_tag
 from .message import Message, MessageSegment
-from .models import Robot, MessageContentInfo
+from .models import Robot, MessageContentInfoGet
 
 
 class EventType(IntEnum):
@@ -88,7 +88,7 @@ class SendMessageEvent(Event):
     see https://webstatic.mihoyo.com/vila/bot/doc/callback.html###SendMessage"""
 
     type: Literal[EventType.SendMessage] = EventType.SendMessage
-    content: MessageContentInfo
+    content: MessageContentInfoGet
     """消息内容"""
     from_user_id: int
     """发送者ID"""
@@ -218,7 +218,10 @@ class SendMessageEvent(Event):
             message = Message(message)
         if mention_sender:
             message.insert(
-                0, MessageSegment.mention_user(self.villa_id, self.from_user_id)
+                0,
+                MessageSegment.mention_user(
+                    self.from_user_id, self.content.user.name, self.villa_id
+                ),
             )
         if quote_message:
             message.append(MessageSegment.quote(self.msg_uid, self.send_at))
@@ -282,6 +285,37 @@ class AddQuickEmoticonEvent(Event):
         return escape_tag(
             f"Emoticon(name={self.emoticon}, id={self.emoticon_id}) was {'removed from' if self.is_cancel else 'added to'} Message(id={self.msg_uid}) by User(id={self.uid}) in Room(id=Villa(id={self.room_id}) of Villa(id={self.villa_id})"
         )
+
+    async def send(
+        self,
+        message: Union[str, MessageSegment, Message],
+        mention_sender: bool = False,
+        quote_message: bool = False,
+    ) -> str:
+        """对事件进行快速发送消息
+
+        参数:
+            message: 消息内容
+            mention_sender: 是否@发送者. 默认为 False.
+            quote_message: 是否引用事件消息. 默认为 False.
+
+        异常:
+            ValueError: 找不到 Bot 实例
+
+        返回:
+            str: 消息 ID
+        """
+        if (bot := get_bot(self.bot_id)) is None:
+            raise ValueError(f"Bot {self.bot_id} not found. Cannot send message.")
+        if isinstance(message, (str, MessageSegment)):
+            message = Message(message)
+        if mention_sender:
+            message.insert(
+                0, MessageSegment.mention_user(self.uid, None, self.villa_id)
+            )
+        if quote_message:
+            message.append(MessageSegment.quote(self.msg_uid, self.send_at))
+        return await bot.send(self.villa_id, self.room_id, message)
 
 
 class AuditCallbackEvent(Event):

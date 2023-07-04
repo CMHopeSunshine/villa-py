@@ -967,20 +967,26 @@ class Bot:
                     mentioned.user_id_list.append(seg.bot_id)
                 elif isinstance(seg, MentionUserSegment):
                     # 需要调用API获取被@的用户的昵称
-                    user = await self.get_member(villa_id=seg.villa_id, uid=seg.user_id)
-                    seg_text = f"@{user.basic.nickname} "
+                    if not seg.user_name and seg.villa_id:
+                        user = await self.get_member(
+                            villa_id=seg.villa_id, uid=seg.user_id
+                        )
+                        seg_text = f"@{user.basic.nickname} "
+                        seg.user_name = user.basic.nickname
+                    else:
+                        seg_text = f"@{seg.user_name} "
                     length = cal_len(seg_text)
                     entities.append(
                         TextEntity(
                             offset=message_offset,
                             length=length,
                             entity=MentionedUser(
-                                user_id=str(user.basic.uid),
-                                user_name=user.basic.nickname,
+                                user_id=str(seg.user_id),
+                                user_name=seg.user_name,  # type: ignore
                             ),
                         )
                     )
-                    mentioned.user_id_list.append(str(user.basic.uid))
+                    mentioned.user_id_list.append(str(seg.user_id))
                 elif isinstance(seg, RoomLinkSegment):
                     # 需要调用API获取房间的名称
                     room = await self.get_room(
