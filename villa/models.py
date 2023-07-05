@@ -234,7 +234,7 @@ class MessageContentInfo(BaseModel):
 
 class MessageContentInfoGet(MessageContentInfo):
     user: User
-    trace: Trace
+    trace: Optional[Trace] = None
 
 
 # 房间部分
