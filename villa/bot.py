@@ -68,7 +68,7 @@ class Bot:
         self.bot_id = bot_id
         self.bot_secret = bot_secret
         if callback_url is not None:
-            self.callback_endpoint = urlparse(callback_url).path
+            self.callback_endpoint = urlparse(callback_url).path or "/"
         self.wait_util_complete = wait_util_complete
         self._client = httpx.AsyncClient(
             base_url="https://bbs-api.miyoushe.com/vila/api/bot/platform/",
