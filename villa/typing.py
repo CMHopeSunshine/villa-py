@@ -1,4 +1,4 @@
-from typing import Any, Union, TypeVar, Callable, Awaitable
+from typing import Any, Awaitable, Callable, TypeVar, Union
 
 from .event import Event
 

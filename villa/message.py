@@ -1,10 +1,10 @@
-import re
 from abc import ABC
+import re
+from typing import Iterable, Iterator, List, Literal, Optional, overload, Tuple, Union
 from typing_extensions import Self
-from typing import List, Tuple, Union, Literal, Iterable, Iterator, Optional, overload
 
+from pydantic import BaseModel, Field, root_validator
 from pydantic.utils import get_args  # type: ignore
-from pydantic import Field, BaseModel, root_validator
 
 MessageType = Literal[
     "text",
@@ -35,7 +35,9 @@ class MessageSegment(ABC, BaseModel):
 
     @staticmethod
     def mention_user(
-        user_id: int, user_name: Optional[str] = None, villa_id: Optional[int] = None
+        user_id: int,
+        user_name: Optional[str] = None,
+        villa_id: Optional[int] = None,
     ) -> "MentionUser":
         return MentionUser(user_id=user_id, user_name=user_name, villa_id=villa_id)
 
@@ -108,12 +110,11 @@ class MessageSegment(ABC, BaseModel):
     def __add__(self, other: Union[str, "MessageSegment", "Message"]) -> "Message":
         if isinstance(other, str):
             return Message([self, MessageSegment.plain_text(other)])
-        elif isinstance(other, MessageSegment):
+        if isinstance(other, MessageSegment):
             return Message([self, other])
-        elif isinstance(other, Message):
+        if isinstance(other, Message):
             return Message([self, *other.__root__])
-        else:
-            raise TypeError(f"unsupported type: {type(other)}")
+        raise TypeError(f"unsupported type: {type(other)}")
 
     def __radd__(self, other: Union[str, "MessageSegment", "Message"]) -> "Message":
         return self.__add__(other)
@@ -146,6 +147,7 @@ class MentionUser(MessageSegment):
     villa_id: Optional[int] = None
 
     @root_validator
+    @classmethod
     def _(cls, values):
         if values.get("user_name") is None and values.get("villa_id") is None:
             raise ValueError("user_name和villa_id必须至少有一个不为None")
@@ -233,7 +235,11 @@ class Message(BaseModel):
     def __init__(
         self,
         message: Union[
-            str, MessageSegment, Iterable[MessageSegment], "Message", None
+            str,
+            MessageSegment,
+            Iterable[MessageSegment],
+            "Message",
+            None,
         ] = None,
     ):
         """消息类
@@ -289,7 +295,7 @@ class Message(BaseModel):
             Self: 消息对象
         """
         self.__root__.append(
-            MentionUser(user_id=user_id, user_name=user_name, villa_id=villa_id)
+            MentionUser(user_id=user_id, user_name=user_name, villa_id=villa_id),
         )
         return self
 
@@ -341,7 +347,7 @@ class Message(BaseModel):
         参数:
             url: 链接地址
             show_text: 链接显示的文本. 为 None 时与地址保持一致.
-            requires_bot_access_token: 访问时是否需要带上含有用户信息的token. 默认为 False.
+            requires_bot_access_token: 访问时是否需要带上含有用户信息的token.
 
         返回:
             Self: 返回说明
@@ -351,7 +357,7 @@ class Message(BaseModel):
                 url=url,
                 show_text=show_text or url,
                 requires_bot_access_token=requires_bot_access_token,
-            )
+            ),
         )
         return self
 
@@ -374,7 +380,7 @@ class Message(BaseModel):
             Self: 消息对象
         """
         self.__root__.append(
-            Image(url=url, width=width, height=height, file_size=file_size)
+            Image(url=url, width=width, height=height, file_size=file_size),
         )
         return self
 
@@ -394,7 +400,7 @@ class Message(BaseModel):
                 quoted_message_send_time=message_send_time,
                 original_message_id=message_id,
                 original_message_send_time=message_send_time,
-            )
+            ),
         )
         return self
 
@@ -443,7 +449,7 @@ class Message(BaseModel):
                 content=content,
                 url=url,
                 source_name=source_name,
-            )
+            ),
         )
         return self
 
@@ -481,7 +487,7 @@ class Message(BaseModel):
     def get_plain_text(self) -> str:
         """获取纯文本消息内容"""
         return "".join(
-            [segment.content for segment in self.__root__ if isinstance(segment, Text)]
+            [segment.content for segment in self.__root__ if isinstance(segment, Text)],
         )
 
     def __contains__(self, item: str) -> bool:
@@ -635,7 +641,8 @@ class Message(BaseModel):
 
     @overload
     def __getitem__(
-        self, __args: Tuple[Literal["mention_user"], int]
+        self,
+        __args: Tuple[Literal["mention_user"], int],
     ) -> Optional[MentionUser]:
         """
         参数:
@@ -648,7 +655,8 @@ class Message(BaseModel):
 
     @overload
     def __getitem__(
-        self, __args: Tuple[Literal["mention_all"], int]
+        self,
+        __args: Tuple[Literal["mention_all"], int],
     ) -> Optional[MentionAll]:
         """
         参数:
@@ -661,7 +669,8 @@ class Message(BaseModel):
 
     @overload
     def __getitem__(
-        self, __args: Tuple[Literal["mention_robot"], int]
+        self,
+        __args: Tuple[Literal["mention_robot"], int],
     ) -> Optional[MentionRobot]:
         """
         参数:
@@ -674,7 +683,8 @@ class Message(BaseModel):
 
     @overload
     def __getitem__(
-        self, __args: Tuple[Literal["room_link"], int]
+        self,
+        __args: Tuple[Literal["room_link"], int],
     ) -> Optional[RoomLink]:
         """
         参数:
@@ -731,7 +741,8 @@ class Message(BaseModel):
 
     @overload
     def __getitem__(
-        self, __args: Tuple[Literal["preview_link"], int]
+        self,
+        __args: Tuple[Literal["preview_link"], int],
     ) -> Optional[PreviewLink]:
         """
         参数:
@@ -760,12 +771,12 @@ class Message(BaseModel):
         arg1, arg2 = args if isinstance(args, tuple) else (args, None)
         if isinstance(arg1, int) and arg2 is None:
             return self.__root__.__getitem__(arg1)
-        elif isinstance(arg1, slice) and arg2 is None:
+        if isinstance(arg1, slice) and arg2 is None:
             return Message(self.__root__.__getitem__(arg1))
-        elif isinstance(arg1, str) and arg1 in get_args(MessageType):  # type: ignore
+        if isinstance(arg1, str) and arg1 in get_args(MessageType):  # type: ignore
             if arg2 is None:
                 return Message([seg for seg in self.__root__ if seg.type == arg1])
-            elif isinstance(arg2, int):
+            if isinstance(arg2, int):
                 try:
                     return [seg for seg in self.__root__ if seg.type == arg1][arg2]
                 except IndexError:

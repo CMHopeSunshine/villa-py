@@ -1,11 +1,12 @@
-import re
 import asyncio
 from functools import partial, wraps
-from typing import Callable, TypeVar, Coroutine
+import re
+from typing import Callable, Coroutine, TypeVar
 from typing_extensions import ParamSpec
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
 
 def escape_tag(s: str) -> str:
     """用于记录带颜色日志时转义 `<tag>` 类型特殊标签
@@ -29,8 +30,6 @@ def run_sync(call: Callable[P, R]) -> Callable[P, Coroutine[None, None, R]]:
     async def _wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         loop = asyncio.get_running_loop()
         pfunc = partial(call, *args, **kwargs)
-        result = await loop.run_in_executor(None, pfunc)
-        return result
+        return await loop.run_in_executor(None, pfunc)
 
     return _wrapper
-    

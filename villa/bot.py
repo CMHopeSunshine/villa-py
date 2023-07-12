@@ -1,34 +1,36 @@
-import re
 import asyncio
-from itertools import product
-from urllib.parse import urlparse
 from collections import defaultdict
-from typing import Any, Set, Dict, List, Type, Union, Literal, Optional, DefaultDict
+from itertools import product
+import re
+from typing import Any, DefaultDict, Dict, List, Literal, Optional, Set, Type, Union
+from urllib.parse import urlparse
 
-import httpx
-import uvicorn
-from pydantic import parse_obj_as
-from httpx._types import TimeoutTypes
-from fastapi.responses import JSONResponse
-from fastapi import FastAPI, BackgroundTasks
-
-from .models import *
-from .message import Message
-from .utils import escape_tag
-from .handle import EventHandler
-from .message import MessageSegment
-from .log import logger, _log_patcher
-from .typing import T_Func, T_Handler
-from .message import Link as LinkSegment
-from .message import Text as TextSegment
-from .message import Image as ImageSegment
-from .store import get_app, get_bot, store_bot
-from .message import RoomLink as RoomLinkSegment
+from .event import Event, event_classes, pre_handle_event, SendMessageEvent
 from .exception import ActionFailed, StopPropagation
-from .message import MentionAll as MentionAllSegment
-from .message import MentionUser as MentionUserSegment
-from .message import MentionRobot as MentionRobotSegment
-from .event import Event, SendMessageEvent, event_classes, pre_handle_event
+from .handle import EventHandler
+from .log import _log_patcher, logger
+from .message import (
+    Image as ImageSegment,
+    Link as LinkSegment,
+    MentionAll as MentionAllSegment,
+    MentionRobot as MentionRobotSegment,
+    MentionUser as MentionUserSegment,
+    Message,
+    MessageSegment,
+    RoomLink as RoomLinkSegment,
+    Text as TextSegment,
+)
+from .models import *
+from .store import get_app, get_bot, store_bot
+from .typing import T_Func, T_Handler
+from .utils import escape_tag
+
+from fastapi import BackgroundTasks, FastAPI
+from fastapi.responses import JSONResponse
+import httpx
+from httpx._types import TimeoutTypes
+from pydantic import parse_obj_as
+import uvicorn
 
 
 class Bot:
@@ -110,7 +112,10 @@ class Bot:
         return self._bot_info.villa_id
 
     def on_event(
-        self, *event_type: Type[Event], block: bool = False, priority: int = 1
+        self,
+        *event_type: Type[Event],
+        block: bool = False,
+        priority: int = 1,
     ):
         """注册一个事件处理函数
 
@@ -125,8 +130,11 @@ class Bot:
         def _decorator(func: T_Handler) -> T_Handler:
             self._event_handlers[priority].append(
                 EventHandler(
-                    event_type=event_type, func=func, block=block, priority=priority
-                )
+                    event_type=event_type,
+                    func=func,
+                    block=block,
+                    priority=priority,
+                ),
             )
             return func
 
@@ -149,7 +157,7 @@ class Bot:
                     func=func,
                     block=block,
                     priority=priority,
-                )
+                ),
             )
             return func
 
@@ -158,13 +166,13 @@ class Bot:
     def on_startswith(
         self,
         *startswith: str,
-        prefix: Union[str, Set[str]] = set(""),
+        prefix: Union[str, Set[str], None] = None,
         block: bool = False,
         priority: int = 1,
     ):
         """注册一个消息事件处理函数
 
-        当事件属于 SendMessageEvent 消息事件且纯文本部分以指定字符串开头时，执行处理函数。
+        当事件属于 SendMessageEvent 消息事件且纯文本部分以指定字符串开头时，执行处理函数
 
         参数:
             *startswith: 字符串列表.
@@ -172,9 +180,11 @@ class Bot:
             block: 是否阻止更低优先级的处理函数执行. 默认为 False.
             priority: 优先级. 默认为 1.
         """
+        if prefix is None:
+            prefix = {""}
         if isinstance(prefix, str):
             prefix = {prefix}
-        startswith = tuple(set(p + s for p, s in list(product(prefix, startswith))))
+        startswith = tuple({p + s for p, s in list(product(prefix, startswith))})
 
         def _decorator(func: T_Handler) -> T_Handler:
             self._event_handlers[priority].append(
@@ -184,7 +194,7 @@ class Bot:
                     block=block,
                     priority=priority,
                     startswith=startswith or None,
-                )
+                ),
             )
             return func
 
@@ -193,7 +203,7 @@ class Bot:
     def on_endswith(self, *endswith: str, block: bool = False, priority: int = 1):
         """注册一个消息事件处理函数
 
-        当事件属于 SendMessageEvent 消息事件且纯文本部分以指定字符串结尾时，执行处理函数。
+        当事件属于 SendMessageEvent 消息事件且纯文本部分以指定字符串结尾时，执行处理函数
 
         参数:
             *endswith: 字符串列表.
@@ -209,7 +219,7 @@ class Bot:
                     block=block,
                     priority=priority,
                     endswith=endswith or None,
-                )
+                ),
             )
             return func
 
@@ -234,18 +244,21 @@ class Bot:
                     block=block,
                     priority=priority,
                     keywords=keywords or None,
-                )
+                ),
             )
             return func
 
         return _decorator
 
     def on_regex(
-        self, pattern: Union[str, re.Pattern], block: bool = False, priority: int = 1
+        self,
+        pattern: Union[str, re.Pattern],
+        block: bool = False,
+        priority: int = 1,
     ):
         """注册一个消息事件处理函数
 
-        当事件属于 SendMessageEvent 消息事件且纯文本部分与正则表达式匹配时，执行处理函数。
+        当事件属于 SendMessageEvent 消息事件且纯文本部分与正则表达式匹配时，执行处理函数
 
         参数:
             pattern: 正则表达式.
@@ -263,14 +276,17 @@ class Bot:
                     block=block,
                     priority=priority,
                     regex=pattern,
-                )
+                ),
             )
             return func
 
         return _decorator
 
     async def send(
-        self, villa_id: int, room_id: int, message: Union[str, Message, MessageSegment]
+        self,
+        villa_id: int,
+        room_id: int,
+        message: Union[str, Message, MessageSegment],
     ) -> str:
         """发送消息
 
@@ -301,7 +317,9 @@ class Bot:
         )
 
     async def check_member_bot_access_token(
-        self, token: str, villa_id: Optional[int] = None
+        self,
+        token: str,
+        villa_id: Optional[int] = None,
     ) -> CheckMemberBotAccessTokenReturn:
         """校验用户机器人访问凭证，并返回用户信息
 
@@ -318,7 +336,7 @@ class Bot:
                 "checkMemberBotAccessToken",
                 villa_id,
                 json={"token": token},
-            )
+            ),
         )
 
     async def get_villa(self, villa_id: int) -> Villa:
@@ -331,7 +349,7 @@ class Bot:
             Villa: 大别野信息
         """
         return Villa.parse_obj(
-            (await self._request("GET", "getVilla", villa_id, json={}))["villa"]
+            (await self._request("GET", "getVilla", villa_id, json={}))["villa"],
         )
 
     async def get_member(self, villa_id: int, uid: int) -> Member:
@@ -352,11 +370,14 @@ class Bot:
                     villa_id,
                     json={"uid": uid},
                 )
-            )["member"]
+            )["member"],
         )
 
     async def get_villa_members(
-        self, villa_id: int, offset: int, size: int
+        self,
+        villa_id: int,
+        offset: int,
+        size: int,
     ) -> MemberListReturn:
         """获取大别野成员列表
 
@@ -374,7 +395,7 @@ class Bot:
                 "getVillaMembers",
                 villa_id,
                 json={"offset": offset, "size": size},
-            )
+            ),
         )
 
     async def delete_villa_member(self, villa_id: int, uid: int) -> None:
@@ -392,7 +413,12 @@ class Bot:
         )
 
     async def pin_message(
-        self, villa_id: int, msg_uid: str, is_cancel: bool, room_id: int, send_at: int
+        self,
+        villa_id: int,
+        msg_uid: str,
+        is_cancel: bool,
+        room_id: int,
+        send_at: int,
     ) -> None:
         """置顶消息
 
@@ -416,7 +442,11 @@ class Bot:
         )
 
     async def recall_message(
-        self, villa_id: int, msg_uid: str, room_id: int, msg_time: int
+        self,
+        villa_id: int,
+        msg_uid: str,
+        room_id: int,
+        msg_time: int,
     ) -> None:
         """撤回消息
 
@@ -593,10 +623,10 @@ class Bot:
                     villa_id,
                     json={"room_id": room_id},
                 )
-            )["room"]
+            )["room"],
         )
 
-    async def get_villa_group_room_list(self, villa_id: int) -> GroupRoom:
+    async def get_villa_group_room_list(self, villa_id: int) -> List[GroupRoom]:
         """获取房间列表信息
 
         参数:
@@ -605,7 +635,8 @@ class Bot:
         返回:
             GroupRoom: 房间列表
         """
-        return GroupRoom.parse_obj(
+        return parse_obj_as(
+            List[GroupRoom],
             (
                 await self._request(
                     "GET",
@@ -613,7 +644,7 @@ class Bot:
                     villa_id,
                     json={},
                 )
-            )["list"]
+            )["list"],
         )
 
     async def sort_room_list(self, villa_id: int, room_list: List[RoomSort]) -> None:
@@ -634,7 +665,11 @@ class Bot:
         )
 
     async def operate_member_to_role(
-        self, villa_id: int, role_id: int, uid: int, is_add: bool
+        self,
+        villa_id: int,
+        role_id: int,
+        uid: int,
+        is_add: bool,
     ) -> None:
         """向身份组操作用户
 
@@ -652,7 +687,11 @@ class Bot:
         )
 
     async def create_member_role(
-        self, villa_id: int, name: str, color: Color, permissions: List[Permission]
+        self,
+        villa_id: int,
+        name: str,
+        color: Color,
+        permissions: List[Permission],
     ) -> int:
         """创建身份组
 
@@ -718,7 +757,9 @@ class Bot:
         )
 
     async def get_member_role_info(
-        self, villa_id: int, role_id: int
+        self,
+        villa_id: int,
+        role_id: int,
     ) -> MemberRoleDetail:
         """获取身份组
 
@@ -737,7 +778,7 @@ class Bot:
                     villa_id,
                     json={"role_id": role_id},
                 )
-            )["role"]
+            )["role"],
         )
 
     async def get_villa_member_roles(self, villa_id: int) -> List[MemberRoleDetail]:
@@ -857,7 +898,7 @@ class Bot:
             Any: 返回结果
         """
         logger.opt(colors=True).debug(
-            f"<b><m>{self.bot_id}</m></b> | Calling API <y>{api}</y>"
+            f"<b><m>{self.bot_id}</m></b> | Calling API <y>{api}</y>",
         )
         try:
             resp = await self._client.request(
@@ -870,8 +911,7 @@ class Bot:
             resp = ApiResponse.parse_raw(resp.content)
             if resp.retcode == 0:
                 return resp.data
-            else:
-                raise ActionFailed(resp.retcode, resp)
+            raise ActionFailed(resp.retcode, resp)
         except Exception as e:
             raise e
 
@@ -889,17 +929,20 @@ class Bot:
         for priority in sorted(self._event_handlers.keys()):
             try:
                 await asyncio.gather(
-                    *[handler._run(event) for handler in self._event_handlers[priority]]
+                    *[
+                        handler._run(event)
+                        for handler in self._event_handlers[priority]
+                    ],
                 )
                 is_handled = True
             except StopPropagation as e:
                 logger.opt(colors=True).debug(
-                    f"<b><y>[{event.__class__.__name__}]</y></b> stop handled by <y>{e.handler}</y>"
+                    f"{event.get_event_name()} stop handled by <y>{e.handler}</y>",
                 )
                 break
         if is_handled:
             logger.opt(colors=True).success(
-                f"{event.get_event_name()} handle completed"
+                f"{event.get_event_name()} handle completed",
             )
 
     async def _parse_message_content(self, message: Message) -> MessageContentInfo:
@@ -929,7 +972,10 @@ class Bot:
             ]
         else:
             images = None
-        cal_len = lambda x: len(x.encode("utf-16")) // 2 - 1
+
+        def cal_len(x):
+            return len(x.encode("utf-16")) // 2 - 1
+
         message_text = ""
         message_offset = 0
         entities: List[TextEntity] = []
@@ -949,7 +995,7 @@ class Bot:
                             offset=message_offset,
                             length=length,
                             entity=MentionedAll(show_text=seg.show_text),
-                        )
+                        ),
                     )
                     mentioned.type = MentionType.ALL
                 elif isinstance(seg, MentionRobotSegment):
@@ -960,16 +1006,18 @@ class Bot:
                             offset=message_offset,
                             length=length,
                             entity=MentionedRobot(
-                                bot_id=seg.bot_id, bot_name=seg.bot_name
+                                bot_id=seg.bot_id,
+                                bot_name=seg.bot_name,
                             ),
-                        )
+                        ),
                     )
                     mentioned.user_id_list.append(seg.bot_id)
                 elif isinstance(seg, MentionUserSegment):
                     # 需要调用API获取被@的用户的昵称
                     if not seg.user_name and seg.villa_id:
                         user = await self.get_member(
-                            villa_id=seg.villa_id, uid=seg.user_id
+                            villa_id=seg.villa_id,
+                            uid=seg.user_id,
                         )
                         seg_text = f"@{user.basic.nickname} "
                         seg.user_name = user.basic.nickname
@@ -984,13 +1032,14 @@ class Bot:
                                 user_id=str(seg.user_id),
                                 user_name=seg.user_name,  # type: ignore
                             ),
-                        )
+                        ),
                     )
                     mentioned.user_id_list.append(str(seg.user_id))
                 elif isinstance(seg, RoomLinkSegment):
                     # 需要调用API获取房间的名称
                     room = await self.get_room(
-                        villa_id=seg.villa_id, room_id=seg.room_id
+                        villa_id=seg.villa_id,
+                        room_id=seg.room_id,
                     )
                     seg_text = f"#{room.room_name} "
                     length = cal_len(seg_text)
@@ -1003,7 +1052,7 @@ class Bot:
                                 room_id=str(seg.room_id),
                                 room_name=room.room_name,
                             ),
-                        )
+                        ),
                     )
                 else:
                     seg: LinkSegment
@@ -1018,7 +1067,7 @@ class Bot:
                                 show_text=seg.show_text,
                                 requires_bot_access_token=seg.requires_bot_access_token,
                             ),
-                        )
+                        ),
                     )
                 message_offset += length
                 message_text += seg_text
@@ -1041,7 +1090,9 @@ class Bot:
                     content = ImageMessageContent(**images[0].dict())
             elif preview_link:
                 content = TextMessageContent(
-                    text="\u200B", preview_link=preview_link, badge=badge
+                    text="\u200B",
+                    preview_link=preview_link,
+                    badge=badge,
                 )
             elif post:
                 content = PostMessageContent(post_id=post.post_id)
@@ -1062,13 +1113,14 @@ class Bot:
         if self.callback_endpoint is not None:
             logger.opt(colors=True).info(f"Initializing Bot <m>{self.bot_id}</m>...")
             logger.opt(colors=True).debug(
-                f"With Secret: <m>{self.bot_secret}</m> and Callback Endpoint: <m>{self.callback_endpoint}</m>"
+                f"With Secret: <m>{self.bot_secret}</m> "
+                f"and Callback Endpoint: <m>{self.callback_endpoint}</m>",
             )
             app.post(self.callback_endpoint, status_code=200)(handle_event)
             app.on_event("shutdown")(self._close_client)
         else:
             logger.opt(colors=True).warning(
-                f"Bot <m>{self.bot_id}</m> missing callback url endpoint."
+                f"Bot <m>{self.bot_id}</m> missing callback url endpoint.",
             )
 
     def run(
@@ -1141,13 +1193,15 @@ def run_bots(
 
 
 async def handle_event(
-    data: Dict[str, Any], backgroud_tasks: BackgroundTasks
+    data: Dict[str, Any],
+    backgroud_tasks: BackgroundTasks,
 ) -> JSONResponse:
     """处理事件"""
     if not (payload_data := data.get("event", None)):
         logger.warning(f"Received invalid data: {escape_tag(str(data))}")
         return JSONResponse(
-            status_code=400, content={"retcode": -1, "msg": "Invalid data"}
+            status_code=400,
+            content={"retcode": -1, "msg": "Invalid data"},
         )
     try:
         event = parse_obj_as(event_classes, pre_handle_event(payload_data))
@@ -1155,14 +1209,19 @@ async def handle_event(
             raise ValueError(f"Bot {event.bot_id} not found")
         bot._bot_info = event.robot
         logger.opt(colors=True).success(
-            f"<b><m>{bot.bot_id}</m></b> | <b><y>[{event.__class__.__name__}]</y></b>: {event.get_event_description()}"
+            (
+                f"<b><m>{bot.bot_id}</m></b>"
+                f" | <b><y>[{event.__class__.__name__}]</y></b>: "
+                f"{event.get_event_description()}",
+            ),
         )
     except Exception as e:
         logger.opt(exception=e).warning(
-            f"Failed to parse payload {escape_tag(str(payload_data))}"
+            f"Failed to parse payload {escape_tag(str(payload_data))}",
         )
         return JSONResponse(
-            status_code=400, content={"retcode": -1, "msg": "Invalid data"}
+            status_code=400,
+            content={"retcode": -1, "msg": "Invalid data"},
         )
     else:
         if bot.wait_util_complete:

@@ -1,10 +1,10 @@
-import sys
-import json
-import inspect
 from enum import Enum, IntEnum
-from typing import Any, Dict, List, Union, Literal, Optional
+import inspect
+import json
+import sys
+from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import Field, BaseModel, validator
+from pydantic import BaseModel, Field, validator
 
 
 class ApiResponse(BaseModel):
@@ -83,7 +83,7 @@ class Member(BaseModel):
 
 
 class MemberListReturn(BaseModel):
-    list: List[Member]
+    list: List[Member]  # noqa: A003
     next_offset: int
 
 
@@ -170,6 +170,7 @@ class PostMessageContent(BaseModel):
     post_id: str
 
     @validator("post_id")
+    @classmethod
     def __deal_post_id(cls, v: str):
         s = v.split("/")[-1]
         if s.isdigit():
@@ -210,6 +211,7 @@ class User(BaseModel):
     portrait: str
 
     @validator("extra", pre=True)
+    @classmethod
     def extra_str_to_dict(cls, v: Any):
         if isinstance(v, str):
             return json.loads(v)
@@ -244,8 +246,8 @@ class Room(BaseModel):
     room_name: str
     room_type: "RoomType"
     group_id: int
-    room_default_notify_type: "RoomDefaultNotifyType"
-    send_msg_auth_range: "SendMsgAuthRange"
+    room_default_notify_type: Optional["RoomDefaultNotifyType"] = None
+    send_msg_auth_range: Optional["SendMsgAuthRange"] = None
 
 
 class RoomType(str, Enum):
@@ -275,7 +277,7 @@ class SendMsgAuthRange(BaseModel):
 class GroupRoom(BaseModel):
     group_id: int
     group_name: str
-    room_list: "ListRoom"
+    room_list: List[Room]
 
 
 class ListRoomType(IntEnum):
@@ -302,13 +304,6 @@ class CreateRoomDefaultNotifyType(IntEnum):
 
     def __repr__(self) -> str:
         return self.name
-
-
-class ListRoom(BaseModel):
-    room_id: int
-    room_name: str
-    room_type: ListRoomType
-    group_id: int
 
 
 class Group(BaseModel):
@@ -398,7 +393,7 @@ class Emoticon(BaseModel):
     icon: str
 
 
-for name, obj in inspect.getmembers(sys.modules[__name__]):
+for _, obj in inspect.getmembers(sys.modules[__name__]):
     if inspect.isclass(obj) and issubclass(obj, BaseModel):
         obj.update_forward_refs()
 
@@ -442,7 +437,6 @@ __all__ = [
     "ListRoomType",
     "CreateRoomType",
     "CreateRoomDefaultNotifyType",
-    "ListRoom",
     "Group",
     "RoomSort",
     "MemberRole",
