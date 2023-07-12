@@ -1,5 +1,5 @@
-import sys
 import logging
+import sys
 from typing import TYPE_CHECKING
 
 import loguru
@@ -25,7 +25,8 @@ class LoguruHandler(logging.Handler):
             depth += 1
 
         logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
+            level,
+            record.getMessage(),
         )
 
 

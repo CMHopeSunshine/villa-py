@@ -15,6 +15,9 @@ _✨ 米游社大别野Bot Python SDK ✨_
 <a href="https://wakatime.com/badge/user/eed3f89c-5d65-46e6-ab19-78dcc4b62b3f/project/d3b88a99-17c2-4c98-bbc2-c1949ce7c078">
   <img src="https://wakatime.com/badge/user/eed3f89c-5d65-46e6-ab19-78dcc4b62b3f/project/d3b88a99-17c2-4c98-bbc2-c1949ce7c078.svg" alt="wakatime">
 </a>
+<a href="https://github.com/astral-sh/ruff">
+  <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json" alt="ruff">
+</a>
 
 </div>
 
@@ -73,7 +76,7 @@ if __name__ == "__main__":
 
 大别野 Bot 和本 SDK 均为开发测试中，如遇问题请提出 [issue](https://github.com/CMHopeSunshine/villa-py/issues) ，感谢支持！
 
-也欢迎来我的大别野[「尘世闲游」]((https://dby.miyoushe.com/chat/1047/21652))(ID: `wgiJNaU`)进行交流~ 
+也欢迎来我的大别野[「尘世闲游」]((https://dby.miyoushe.com/chat/1047/21652))(ID: `wgiJNaU`)进行交流~
 
 ## 相关项目
 

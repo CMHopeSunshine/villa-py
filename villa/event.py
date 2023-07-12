@@ -1,13 +1,13 @@
-import json
 from enum import IntEnum
-from typing import Any, Dict, Union, Literal, Optional
+import json
+from typing import Any, Dict, Literal, Optional, Union
 
-from pydantic import BaseModel, root_validator
-
+from .message import Message, MessageSegment
+from .models import MessageContentInfoGet, Robot
 from .store import get_bot
 from .utils import escape_tag
-from .message import Message, MessageSegment
-from .models import Robot, MessageContentInfoGet
+
+from pydantic import BaseModel, root_validator
 
 
 class EventType(IntEnum):
@@ -78,7 +78,8 @@ class JoinVillaEvent(Event):
 
     def get_event_description(self) -> str:
         return escape_tag(
-            f"User(nickname={self.join_user_nickname},id={self.join_uid}) join Villa(id={self.villa_id})"
+            f"User(nickname={self.join_user_nickname},"
+            f"id={self.join_uid}) join Villa(id={self.villa_id})",
         )
 
 
@@ -115,10 +116,13 @@ class SendMessageEvent(Event):
 
     def get_event_description(self) -> str:
         return escape_tag(
-            f"Message(id={self.msg_uid}) was sent from User(nickname={self.nickname},id={self.from_user_id}) in Room(id={self.room_id}) of Villa(id={self.villa_id}), content={repr(self.message)}"
+            f"Message(id={self.msg_uid}) was sent from User(nickname={self.nickname},"
+            f"id={self.from_user_id}) in Room(id={self.room_id}) of "
+            f"Villa(id={self.villa_id}), content={repr(self.message)}",
         )
 
     @root_validator(pre=True)
+    @classmethod
     def _(cls, data: Dict[str, Any]):
         if not data.get("content"):
             return data
@@ -130,7 +134,7 @@ class SendMessageEvent(Event):
                 MessageSegment.quote(
                     message_id=quote["quoted_message_id"],
                     message_send_time=quote["quoted_message_send_time"],
-                )
+                ),
             )
 
         content = msg_content_info["content"]
@@ -150,26 +154,28 @@ class SendMessageEvent(Event):
                 msg.append(
                     MessageSegment.plain_text(
                         text[((end_offset + 1) * 2) : ((offset + 1) * 2)].decode(
-                            "utf-16"
-                        )
-                    )
+                            "utf-16",
+                        ),
+                    ),
                 )
             entity_text = text[(offset + 1) * 2 : (offset + length + 1) * 2].decode(
-                "utf-16"
+                "utf-16",
             )
             if entity_detail["type"] == "mentioned_robot":
                 entity_detail["bot_name"] = entity_text.lstrip("@")[:-1]
                 msg.append(
                     MessageSegment.mention_robot(
-                        entity_detail["bot_id"], entity_detail["bot_name"]
-                    )
+                        entity_detail["bot_id"],
+                        entity_detail["bot_name"],
+                    ),
                 )
             elif entity_detail["type"] == "mentioned_user":
                 entity_detail["user_name"] = entity_text.lstrip("@")[:-1]
                 msg.append(
                     MessageSegment.mention_user(
-                        int(entity_detail["user_id"]), data["villa_id"]
-                    )
+                        int(entity_detail["user_id"]),
+                        data["villa_id"],
+                    ),
                 )
             elif entity_detail["type"] == "mention_all":
                 entity_detail["show_text"] = entity_text.lstrip("@")[:-1]
@@ -180,7 +186,7 @@ class SendMessageEvent(Event):
                     MessageSegment.room_link(
                         int(entity_detail["villa_id"]),
                         int(entity_detail["room_id"]),
-                    )
+                    ),
                 )
             else:
                 entity_detail["show_text"] = entity_text
@@ -220,7 +226,9 @@ class SendMessageEvent(Event):
             message.insert(
                 0,
                 MessageSegment.mention_user(
-                    self.from_user_id, self.content.user.name, self.villa_id
+                    self.from_user_id,
+                    self.content.user.name,
+                    self.villa_id,
                 ),
             )
         if quote_message:
@@ -239,7 +247,7 @@ class CreateRobotEvent(Event):
 
     def get_event_description(self) -> str:
         return escape_tag(
-            f"Bot(id={self.bot_id}) was added to Villa(id={self.villa_id})"
+            f"Bot(id={self.bot_id}) was added to Villa(id={self.villa_id})",
         )
 
 
@@ -254,7 +262,7 @@ class DeleteRobotEvent(Event):
 
     def get_event_description(self) -> str:
         return escape_tag(
-            f"Bot(id={self.bot_id}) was removed from Villa(id={self.villa_id})"
+            f"Bot(id={self.bot_id}) was removed from Villa(id={self.villa_id})",
         )
 
 
@@ -283,7 +291,10 @@ class AddQuickEmoticonEvent(Event):
 
     def get_event_description(self) -> str:
         return escape_tag(
-            f"Emoticon(name={self.emoticon}, id={self.emoticon_id}) was {'removed from' if self.is_cancel else 'added to'} Message(id={self.msg_uid}) by User(id={self.uid}) in Room(id=Villa(id={self.room_id}) of Villa(id={self.villa_id})"
+            f"Emoticon(name={self.emoticon}, id={self.emoticon_id}) "
+            f"was {'removed from' if self.is_cancel else 'added to'} "
+            f"Message(id={self.msg_uid}) by User(id={self.uid}) in "
+            f"Room(id=Villa(id={self.room_id}) of Villa(id={self.villa_id})",
         )
 
     async def send(
@@ -311,7 +322,8 @@ class AddQuickEmoticonEvent(Event):
             message = Message(message)
         if mention_sender:
             message.insert(
-                0, MessageSegment.mention_user(self.uid, None, self.villa_id)
+                0,
+                MessageSegment.mention_user(self.uid, None, self.villa_id),
             )
         if quote_message:
             message.append(MessageSegment.quote(self.msg_uid, self.send_at))
@@ -341,7 +353,9 @@ class AuditCallbackEvent(Event):
 
     def get_event_description(self) -> str:
         return escape_tag(
-            f"Audit(id={self.audit_id},result={self.audit_result}) of User(id={self.user_id}) in Room(id={self.room_id}) of Villa(id={self.villa_id})"
+            f"Audit(id={self.audit_id},result={self.audit_result}) of "
+            f"User(id={self.user_id}) in Room(id={self.room_id}) of "
+            f"Villa(id={self.villa_id})",
         )
 
 
@@ -358,7 +372,7 @@ event_classes = Union[
 def pre_handle_event(payload: Dict[str, Any]):
     if (event_type := EventType._value2member_map_.get(payload["type"])) is None:
         raise ValueError(
-            f"Unknown event type: {payload['type']} data={escape_tag(str(payload))}"
+            f"Unknown event type: {payload['type']} data={escape_tag(str(payload))}",
         )
     event_name = event_type.name
     if event_name not in payload["extend_data"]["EventData"]:

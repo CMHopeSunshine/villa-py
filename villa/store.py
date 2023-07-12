@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import Dict, Optional, TYPE_CHECKING
 
 from fastapi import FastAPI
 
