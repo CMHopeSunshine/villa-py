@@ -6,7 +6,18 @@ from typing import Any, DefaultDict, Dict, List, Literal, Optional, Set, Type, U
 from urllib.parse import urlparse
 
 from .event import Event, event_classes, pre_handle_event, SendMessageEvent
-from .exception import ActionFailed, StopPropagation
+from .exception import (
+    ActionFailed,
+    BotNotAdded,
+    InsufficientPermission,
+    InvalidBotAuthInfo,
+    InvalidMemberBotAccessToken,
+    InvalidRequest,
+    PermissionDenied,
+    StopPropagation,
+    UnknownServerError,
+    UnsupportedMsgType,
+)
 from .handle import EventHandler
 from .log import _log_patcher, logger
 from .message import (
@@ -931,6 +942,22 @@ class Bot:
             resp = ApiResponse.parse_raw(resp.content)
             if resp.retcode == 0:
                 return resp.data
+            if resp.retcode == -502:
+                raise UnknownServerError(resp)
+            if resp.retcode == -1:
+                raise InvalidRequest(resp)
+            if resp.retcode == 10318001:
+                raise InsufficientPermission(resp)
+            if resp.retcode == 10322002:
+                raise BotNotAdded(resp)
+            if resp.retcode == 10322003:
+                raise PermissionDenied(resp)
+            if resp.retcode == 10322004:
+                raise InvalidMemberBotAccessToken(resp)
+            if resp.retcode == 10322005:
+                raise InvalidBotAuthInfo(resp)
+            if resp.retcode == 10322006:
+                raise UnsupportedMsgType(resp)
             raise ActionFailed(resp.retcode, resp)
         except Exception as e:
             raise e
