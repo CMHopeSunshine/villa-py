@@ -859,6 +859,26 @@ class Bot:
             )
         )["audit_id"]
 
+    async def transfer_image(self, url: str) -> str:
+        """将非米游社的三方图床图片转存到米游社官方图床
+
+        参数:
+            url: 三方图床的图片链接
+
+        返回:
+            str: 新的米游社官方图床的图片链接
+        """
+        return (
+            await self._request(
+                "POST",
+                "transferImage",
+                None,
+                json={
+                    "url": url,
+                },
+            )
+        )["new_url"]
+
     def _get_headers(self, villa_id: Optional[int] = None) -> Dict[str, str]:
         """获取鉴权请求头
 
