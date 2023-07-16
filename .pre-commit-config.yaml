@@ -10,6 +10,7 @@ repos:
     rev: 23.3.0
     hooks:
       - id: black
+        args: [--preview]
         stages: [commit]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
