@@ -5,6 +5,7 @@ from villa.message import Message, MessageSegment
 bot = Bot(
     bot_id="your_bot_id",
     bot_secret="your_bot_secret",
+    pub_key="-----BEGIN PUBLIC KEY-----\nyour_pub_key\n-----END PUBLIC KEY-----\n",
     callback_url="your_callback_url_endpoint",
 )
 
@@ -21,7 +22,7 @@ async def keyword_handler2(event: SendMessageEvent):
     # 各种消息段可以通过 + 进行拼接
     msg = (
         MessageSegment.image(
-            "https://www.miyoushe.com/_nuxt/img/miHoYo_Game.2457753.png"
+            "https://www.miyoushe.com/_nuxt/img/miHoYo_Game.2457753.png",
         )
         + MessageSegment.mention_all()
     )
@@ -30,12 +31,16 @@ async def keyword_handler2(event: SendMessageEvent):
     msg = MessageSegment.plain_text("开头文字")  # 纯文本
     msg += MessageSegment.quote(event.msg_uid, event.send_at)  # 引用消息
     msg += MessageSegment.room_link(
-        villa_id=event.villa_id, room_id=event.room_id
+        villa_id=event.villa_id,
+        room_id=event.room_id,
     )  # 房间链接
-    msg += MessageSegment.mention_user(event.villa_id, event.from_user_id)  # @用户
+    msg += MessageSegment.mention_user(
+        event.from_user_id,
+        event.content.user.name,
+    )  # @用户
     msg += MessageSegment.mention_all()  # @全体成员
     msg += MessageSegment.image(
-        "https://www.miyoushe.com/_nuxt/img/miHoYo_Game.2457753.png"
+        "https://www.miyoushe.com/_nuxt/img/miHoYo_Game.2457753.png",
     )  # 图片
     msg += MessageSegment.link("https://www.miyoushe.com/")  # 链接
     msg += MessageSegment.badge(
@@ -58,7 +63,7 @@ async def keyword_handler2(event: SendMessageEvent):
         Message("开头文字")  # 纯文本
         .quote(event.msg_uid, event.send_at)  # 引用消息
         .room_link(event.villa_id, event.room_id)  # 房间链接
-        .mention_user(event.villa_id, event.from_user_id)  # @用户
+        .mention_user(event.from_user_id, event.content.user.name)  # @用户
         .mention_all()  # @全体成员
         .image("https://www.miyoushe.com/_nuxt/img/miHoYo_Game.2457753.png")  # 图片
         .link("https://www.miyoushe.com/")  # 链接
@@ -75,7 +80,7 @@ async def keyword_handler2(event: SendMessageEvent):
 
     # 注意：
     # 帖子只能单独发送，和其他消息段时将被忽略
-    # 如果在单次消息内，同时发送多张图片，或者和其他消息段拼接，那么图片将会在web端看不见，所以不建议这么做
+    # 如果在单次消息内，同时发送多张图片，或者和其他消息段拼接，那么图片在web端将看不见
 
     # 发送消息
     await event.send(msg)

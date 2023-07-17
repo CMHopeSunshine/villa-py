@@ -4,11 +4,13 @@ from villa.event import SendMessageEvent
 bot_1 = Bot(
     bot_id="your_bot_id_1",
     bot_secret="your_bot_secret_1",
+    pub_key="-----BEGIN PUBLIC KEY-----\nyour_pub_key_1\n-----END PUBLIC KEY-----\n",
     callback_url="your_callback_url_endpoint_1",
 )
 bot_2 = Bot(
     bot_id="your_bot_id_2",
     bot_secret="your_bot_secret_2",
+    pub_key="-----BEGIN PUBLIC KEY-----\nyour_pub_key_2\n-----END PUBLIC KEY-----\n",
     callback_url="your_callback_url_endpoint_2",
 )
 # 初始化多个Bot

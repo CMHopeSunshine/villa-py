@@ -1,9 +1,12 @@
 import asyncio
+import base64
 from collections import defaultdict
+import hashlib
+import hmac
 from itertools import product
 import re
 from typing import Any, DefaultDict, Dict, List, Literal, Optional, Set, Type, Union
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 from .event import Event, event_classes, pre_handle_event, SendMessageEvent
 from .exception import (
@@ -36,11 +39,12 @@ from .store import get_app, get_bot, store_bot
 from .typing import T_Func, T_Handler
 from .utils import escape_tag
 
-from fastapi import BackgroundTasks, FastAPI
+from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import JSONResponse
 import httpx
 from httpx._types import TimeoutTypes
 from pydantic import parse_obj_as
+import rsa
 import uvicorn
 
 
@@ -65,19 +69,34 @@ class Bot:
         self,
         bot_id: str,
         bot_secret: str,
+        pub_key: Union[str, bytes],
         callback_url: Optional[str] = None,
         wait_util_complete: bool = False,
         api_timeout: TimeoutTypes = 10,
+        verify_event: bool = True,
     ):
         """初始化一个 Bot 实例
 
         参数:
             bot_id: 机器人 ID
             bot_secret: 机器人密钥
+            pub_key: 机器人 pub_key
             callback_url: 事件回调地址
+            wait_util_complete: 是否等待事件处理完成后响应
+            api_timeout: API 调用超时时间
+            verify_event: 是否对事件进行验证
         """
+        if isinstance(pub_key, str):
+            pub_key = pub_key.encode()
         self.bot_id = bot_id
         self.bot_secret = bot_secret
+        self.pub_key = rsa.PublicKey.load_pkcs1_openssl_pem(pub_key)
+        self.bot_secret_encrypt = hmac.new(
+            pub_key,
+            bot_secret.encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        self.verify_event = verify_event
         if callback_url is not None:
             self.callback_endpoint = urlparse(callback_url).path or "/"
         self.wait_util_complete = wait_util_complete
@@ -901,7 +920,7 @@ class Bot:
         """
         return {
             "x-rpc-bot_id": self.bot_id,
-            "x-rpc-bot_secret": self.bot_secret,
+            "x-rpc-bot_secret": self.bot_secret_encrypt,
             "x-rpc-bot_villa_id": str(villa_id) if villa_id else "",
         }
 
@@ -962,6 +981,22 @@ class Bot:
         except Exception as e:
             raise e
 
+    def _verify_signature(
+        self,
+        body: str,
+        bot_sign: str,
+    ):
+        sign = base64.b64decode(bot_sign)
+        sign_data = urlencode(
+            {"body": body.rstrip("\n"), "secret": self.bot_secret},
+        ).encode()
+        try:
+            rsa.verify(sign_data, sign, self.pub_key)
+        except rsa.VerificationError as e:
+            logger.exception(e)
+            return False
+        return True
+
     async def _close_client(self) -> None:
         """关闭 HTTP Client"""
         await self._client.aclose()
@@ -1010,9 +1045,11 @@ class Bot:
             images = [
                 Image(
                     url=seg.url,
-                    size=ImageSize(width=seg.width, height=seg.height)
-                    if seg.width and seg.height
-                    else None,
+                    size=(
+                        ImageSize(width=seg.width, height=seg.height)
+                        if seg.width and seg.height
+                        else None
+                    ),
                     file_size=seg.file_size,
                 )
                 for seg in images_msg
@@ -1128,7 +1165,7 @@ class Bot:
             if images:
                 if len(images) > 1:
                     content = TextMessageContent(
-                        text="\u200B",
+                        text="\u200b",
                         images=images,
                         preview_link=preview_link,
                         badge=badge,
@@ -1137,7 +1174,7 @@ class Bot:
                     content = ImageMessageContent(**images[0].dict())
             elif preview_link:
                 content = TextMessageContent(
-                    text="\u200B",
+                    text="\u200b",
                     preview_link=preview_link,
                     badge=badge,
                 )
@@ -1160,8 +1197,10 @@ class Bot:
         if self.callback_endpoint is not None:
             logger.opt(colors=True).info(f"Initializing Bot <m>{self.bot_id}</m>...")
             logger.opt(colors=True).debug(
-                f"With Secret: <m>{self.bot_secret}</m> "
-                f"and Callback Endpoint: <m>{self.callback_endpoint}</m>",
+                (
+                    f"With Secret: <m>{self.bot_secret}</m> "
+                    f"and Callback Endpoint: <m>{self.callback_endpoint}</m>"
+                ),
             )
             app.post(self.callback_endpoint, status_code=200)(handle_event)
             app.on_event("shutdown")(self._close_client)
@@ -1241,25 +1280,42 @@ def run_bots(
 
 async def handle_event(
     data: Dict[str, Any],
+    request: Request,
     backgroud_tasks: BackgroundTasks,
+    # bot_sign: str = Header(..., alias="x-rpc-bot_sign"),
 ) -> JSONResponse:
     """处理事件"""
     if not (payload_data := data.get("event", None)):
         logger.warning(f"Received invalid data: {escape_tag(str(data))}")
         return JSONResponse(
-            status_code=400,
-            content={"retcode": -1, "msg": "Invalid data"},
+            status_code=415,
+            content={"retcode": 415, "msg": "Invalid data"},
         )
     try:
         event = parse_obj_as(event_classes, pre_handle_event(payload_data))
         if (bot := get_bot(event.bot_id)) is None:
             raise ValueError(f"Bot {event.bot_id} not found")
+        if (
+            bot.verify_event
+            and (bot_sign := request.headers.get("x-rpc-bot_sign")) is not None
+            and not bot._verify_signature((await request.body()).decode(), bot_sign)
+        ):
+            logger.opt(colors=True).warning(
+                (
+                    f"Bot <b><m>{bot.bot_id}</m></b> "
+                    f"received invalid signature: <b><m>{bot_sign}</m></b>"
+                ),
+            )
+            return JSONResponse(
+                status_code=401,
+                content={"retcode": 401, "msg": "Invalid signature"},
+            )
         bot._bot_info = event.robot
         logger.opt(colors=True).success(
             (
                 f"<b><m>{bot.bot_id}</m></b>"
                 f" | <b><y>[{event.__class__.__name__}]</y></b>: "
-                f"{event.get_event_description()}",
+                f"{event.get_event_description()}"
             ),
         )
     except Exception as e:
@@ -1267,8 +1323,8 @@ async def handle_event(
             f"Failed to parse payload {escape_tag(str(payload_data))}",
         )
         return JSONResponse(
-            status_code=400,
-            content={"retcode": -1, "msg": "Invalid data"},
+            status_code=415,
+            content={"retcode": 415, "msg": "Invalid data"},
         )
     else:
         if bot.wait_util_complete:
