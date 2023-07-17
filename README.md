@@ -38,14 +38,19 @@ _✨ 米游社大别野Bot Python SDK ✨_
 
 ## 快速开始
 
-你需要一个[米游社大别野](https://dby.miyoushe.com/chat)的 Bot，可前往大别野[「机器人开发者社区」](https://dby.miyoushe.com/chat/463/20020)(ID: `OpenVilla`)申请，取得`bot_id`、`bot_secret`。
+你需要一个[米游社大别野](https://dby.miyoushe.com/chat)的 Bot，可前往大别野[「机器人开发者社区」](https://dby.miyoushe.com/chat/463/20020)(ID: `OpenVilla`)申请，取得`bot_id`、`bot_secret`和`pub_key`。
 
 ```python
 from villa import Bot
 from villa.event import SendMessageEvent
 
-bot = Bot(bot_id="your_bot_id", bot_secret="your_bot_secret", callback_url="your_callback_url_endpoint")
-# 初始化Bot，填写你的bot_id、密钥以及回调地址endpoint
+bot = Bot(
+    bot_id="your_bot_id",
+    bot_secret="your_bot_secret",
+    pub_key="-----BEGIN PUBLIC KEY-----\nyour_pub_key\n-----END PUBLIC KEY-----\n",
+    callback_url="your_callback_url_endpoint",
+)
+# 初始化Bot，填写你的bot_id、密钥、pub_key以及回调地址endpoint
 # 举例：若申请时提供的回调地址为https://域名/callback，这里的callback_url就填`/callback`
 
 @bot.on_startswith("hello")
@@ -56,7 +61,7 @@ async def handler(event: SendMessageEvent):
 
 if __name__ == "__main__":
     bot.run(host="127.0.0.1", port=13350)
-    # 启动bot，注意，port端口号要和你的回调地址端口对上
+    # 启动bot，注意，port端口号要和你所使用的回调地址端口对上
 ```
 
 

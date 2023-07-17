@@ -1,11 +1,12 @@
 from typing import Union
 
 from villa import Bot
-from villa.event import Event, JoinVillaEvent, SendMessageEvent, AddQuickEmoticonEvent
+from villa.event import AddQuickEmoticonEvent, Event, JoinVillaEvent, SendMessageEvent
 
 bot = Bot(
     bot_id="your_bot_id",
     bot_secret="your_bot_secret",
+    pub_key="-----BEGIN PUBLIC KEY-----\nyour_pub_key\n-----END PUBLIC KEY-----\n",
     callback_url="your_callback_url_endpoint",
 )
 
@@ -14,7 +15,7 @@ bot = Bot(
 
 @bot.on_event(SendMessageEvent, AddQuickEmoticonEvent, JoinVillaEvent)
 async def event_handler(
-    event: Union[SendMessageEvent, AddQuickEmoticonEvent, JoinVillaEvent]
+    event: Union[SendMessageEvent, AddQuickEmoticonEvent, JoinVillaEvent],
 ):
     """处理指定事件"""
     ...
@@ -34,7 +35,9 @@ async def message_handler(event: SendMessageEvent):
 
 @bot.on_message(block=True, priority=1)
 async def message_handler2(event: SendMessageEvent):
-    """所有处理器都有两个参数：block(是否阻止更低优先级的处理函数执行) priority(优先级，数字越小优先级越高)"""
+    """所有处理器都有两个参数：
+    block(是否阻止更低优先级的处理函数执行)
+    priority(优先级，数字越小优先级越高)"""
     ...
 
 

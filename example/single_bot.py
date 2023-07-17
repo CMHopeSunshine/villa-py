@@ -3,6 +3,7 @@ from villa import Bot
 bot = Bot(
     bot_id="your_bot_id",  # 你的bot_id
     bot_secret="your_bot_secret",  # 你的bot_secret
+    pub_key="your_pub_key",  # 你的bot的pub_key
     callback_url="your_callback_url_endpoint",  # 你的bot的回调地址
     api_timeout=10,  # api超时时间，单位秒
     wait_util_complete=False,  # 是否等待处理函数全部完成后再返回响应，默认为False

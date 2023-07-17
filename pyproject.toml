@@ -16,6 +16,7 @@ fastapi = {extras = ["uvicorn"], version = "^0.96.0"}
 uvicorn = "^0.22.0"
 httpx = "^0.24.1"
 loguru = "^0.7.0"
+rsa = "^4.9"
 
 
 [tool.poetry.group.dev.dependencies]
