@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "villa"
-version = "0.6.3"
+version = "0.7.0"
 description = "米游社大别野Bot Python SDK。MiHoYo Villa Bot Python SDK."
 authors = ["CMHopeSunshine <277073121@qq.com>"]
 license = "MIT"
