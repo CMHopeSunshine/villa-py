@@ -992,8 +992,7 @@ class Bot:
         ).encode()
         try:
             rsa.verify(sign_data, sign, self.pub_key)
-        except rsa.VerificationError as e:
-            logger.exception(e)
+        except rsa.VerificationError:
             return False
         return True
 
@@ -1282,7 +1281,6 @@ async def handle_event(
     data: Dict[str, Any],
     request: Request,
     backgroud_tasks: BackgroundTasks,
-    # bot_sign: str = Header(..., alias="x-rpc-bot_sign"),
 ) -> JSONResponse:
     """处理事件"""
     if not (payload_data := data.get("event", None)):
@@ -1295,10 +1293,9 @@ async def handle_event(
         event = parse_obj_as(event_classes, pre_handle_event(payload_data))
         if (bot := get_bot(event.bot_id)) is None:
             raise ValueError(f"Bot {event.bot_id} not found")
-        if (
-            bot.verify_event
-            and (bot_sign := request.headers.get("x-rpc-bot_sign")) is not None
-            and not bot._verify_signature((await request.body()).decode(), bot_sign)
+        if bot.verify_event and (
+            (bot_sign := request.headers.get("x-rpc-bot_sign")) is None
+            or not bot._verify_signature((await request.body()).decode(), bot_sign)
         ):
             logger.opt(colors=True).warning(
                 (
