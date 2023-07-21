@@ -41,6 +41,7 @@ def format_pub_key(pub_key: str) -> str:
     参数:
         pub_key: 公钥字符串
     """
+    pub_key = pub_key.strip()
     if pub_key.startswith("-----BEGIN PUBLIC KEY-----"):
         pub_key = pub_key[26:]
     if pub_key.endswith("-----END PUBLIC KEY-----"):
