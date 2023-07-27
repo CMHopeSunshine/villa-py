@@ -890,7 +890,7 @@ class Bot:
             )
         )["audit_id"]
 
-    async def transfer_image(self, url: str) -> str:
+    async def transfer_image(self, villa_id: int, url: str) -> str:
         """将非米游社的三方图床图片转存到米游社官方图床
 
         参数:
@@ -903,7 +903,7 @@ class Bot:
             await self._request(
                 "POST",
                 "transferImage",
-                None,
+                villa_id,
                 json={
                     "url": url,
                 },
