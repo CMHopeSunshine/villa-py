@@ -22,13 +22,13 @@ class BotAuth(BaseModel):
 # see https://webstatic.mihoyo.com/vila/bot/doc/callback.html
 class Command(BaseModel):
     name: str
-    desc: str
+    desc: Optional[str] = None
 
 
 class Template(BaseModel):
     id: str
     name: str
-    desc: str
+    desc: Optional[str] = None
     icon: str
     commands: Optional[List[Command]] = None
 
