@@ -394,6 +394,13 @@ class Emoticon(BaseModel):
     icon: str
 
 
+# 审核部分
+# see https://webstatic.mihoyo.com/vila/bot/doc/audit_api/audit.html
+class ContentType(str, Enum):
+    TEXT = "AuditContentTypeText"
+    IMAGE = "AuditContentTypeImage"
+
+
 for _, obj in inspect.getmembers(sys.modules[__name__]):
     if inspect.isclass(obj) and issubclass(obj, BaseModel):
         obj.update_forward_refs()
@@ -447,4 +454,5 @@ __all__ = [
     "Permission",
     "Color",
     "Emoticon",
+    "ContentType",
 ]
