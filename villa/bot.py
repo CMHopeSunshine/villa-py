@@ -129,7 +129,7 @@ class Bot:
         return self._bot_info.template.commands
 
     @property
-    def description(self) -> str:
+    def description(self) -> Optional[str]:
         """Bot 介绍"""
         if self._bot_info is None:
             raise ValueError(f"Bot {self.bot_id} not connected")
@@ -858,9 +858,10 @@ class Bot:
         self,
         villa_id: int,
         audit_content: str,
+        uid: int,
         pass_through: Optional[str] = None,
         room_id: Optional[int] = None,
-        uid: Optional[int] = None,
+        content_type: ContentType = ContentType.TEXT,
     ) -> int:
         """审核
 
@@ -886,6 +887,7 @@ class Bot:
                     "pass_through": pass_through,
                     "room_id": room_id,
                     "uid": uid,
+                    "content_type": content_type,
                 },
             )
         )["audit_id"]
