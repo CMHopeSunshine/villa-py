@@ -3,7 +3,7 @@ import json
 from typing import Any, Dict, Literal, Optional, Union
 
 from .message import Message, MessageSegment
-from .models import MessageContentInfoGet, Robot
+from .models import MessageContentInfoGet, QuoteMessage, Robot
 from .store import get_bot
 from .utils import escape_tag
 
@@ -78,8 +78,10 @@ class JoinVillaEvent(Event):
 
     def get_event_description(self) -> str:
         return escape_tag(
-            f"User(nickname={self.join_user_nickname},"
-            f"id={self.join_uid}) join Villa(id={self.villa_id})",
+            (
+                f"User(nickname={self.join_user_nickname},"
+                f"id={self.join_uid}) join Villa(id={self.villa_id})"
+            ),
         )
 
 
@@ -105,6 +107,8 @@ class SendMessageEvent(Event):
     """消息ID"""
     bot_msg_id: Optional[str]
     """如果被回复的消息从属于机器人，则该字段不为空字符串"""
+    quote_msg: Optional[QuoteMessage]
+    """回调消息引用消息的基础信息"""
 
     message: Message
     """事件消息"""
@@ -116,9 +120,12 @@ class SendMessageEvent(Event):
 
     def get_event_description(self) -> str:
         return escape_tag(
-            f"Message(id={self.msg_uid}) was sent from User(nickname={self.nickname},"
-            f"id={self.from_user_id}) in Room(id={self.room_id}) of "
-            f"Villa(id={self.villa_id}), content={repr(self.message)}",
+            (
+                f"Message(id={self.msg_uid}) was sent from"
+                f" User(nickname={self.nickname},id={self.from_user_id}) in"
+                f" Room(id={self.room_id}) of Villa(id={self.villa_id}),"
+                f" content={repr(self.message)}"
+            ),
         )
 
     @root_validator(pre=True)
@@ -291,10 +298,12 @@ class AddQuickEmoticonEvent(Event):
 
     def get_event_description(self) -> str:
         return escape_tag(
-            f"Emoticon(name={self.emoticon}, id={self.emoticon_id}) "
-            f"was {'removed from' if self.is_cancel else 'added to'} "
-            f"Message(id={self.msg_uid}) by User(id={self.uid}) in "
-            f"Room(id=Villa(id={self.room_id}) of Villa(id={self.villa_id})",
+            (
+                f"Emoticon(name={self.emoticon}, id={self.emoticon_id}) "
+                f"was {'removed from' if self.is_cancel else 'added to'} "
+                f"Message(id={self.msg_uid}) by User(id={self.uid}) in "
+                f"Room(id=Villa(id={self.room_id}) of Villa(id={self.villa_id})"
+            ),
         )
 
     async def send(
@@ -353,9 +362,11 @@ class AuditCallbackEvent(Event):
 
     def get_event_description(self) -> str:
         return escape_tag(
-            f"Audit(id={self.audit_id},result={self.audit_result}) of "
-            f"User(id={self.user_id}) in Room(id={self.room_id}) of "
-            f"Villa(id={self.villa_id})",
+            (
+                f"Audit(id={self.audit_id},result={self.audit_result}) of "
+                f"User(id={self.user_id}) in Room(id={self.room_id}) of "
+                f"Villa(id={self.villa_id})"
+            ),
         )
 
 

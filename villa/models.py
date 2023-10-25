@@ -38,6 +38,17 @@ class Robot(BaseModel):
     template: Template
 
 
+class QuoteMessage(BaseModel):
+    content: str
+    msg_uid: str
+    bot_msg_id: Optional[str]
+    send_at: int
+    msg_type: str
+    from_user_id: int
+    from_user_nickname: str
+    from_user_id_str: str
+
+
 ## 鉴权部分
 ## see https://webstatic.mihoyo.com/vila/bot/doc/auth_api/
 class BotMemberAccessInfo(BaseModel):
@@ -412,6 +423,7 @@ __all__ = [
     "Command",
     "Template",
     "Robot",
+    "QuoteMessage",
     "BotMemberAccessInfo",
     "CheckMemberBotAccessTokenReturn",
     "Villa",

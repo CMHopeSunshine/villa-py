@@ -37,7 +37,7 @@ from .message import (
 from .models import *
 from .store import get_app, get_bot, store_bot
 from .typing import T_Func, T_Handler
-from .utils import escape_tag, format_pub_key
+from .utils import escape_tag
 
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -69,7 +69,7 @@ class Bot:
         self,
         bot_id: str,
         bot_secret: str,
-        pub_key: Union[str, bytes],
+        pub_key: str,
         callback_url: Optional[str] = None,
         wait_util_complete: bool = False,
         api_timeout: TimeoutTypes = 10,
@@ -86,14 +86,12 @@ class Bot:
             api_timeout: API 调用超时时间
             verify_event: 是否对事件进行验证
         """
-        if isinstance(pub_key, bytes):
-            pub_key = pub_key.decode()
-        pub_key = format_pub_key(pub_key).encode()
+        _pub_key = pub_key.encode()
         self.bot_id = bot_id
         self.bot_secret = bot_secret
-        self.pub_key = rsa.PublicKey.load_pkcs1_openssl_pem(pub_key)
+        self.pub_key = rsa.PublicKey.load_pkcs1_openssl_pem(_pub_key)
         self.bot_secret_encrypt = hmac.new(
-            pub_key,
+            _pub_key,
             bot_secret.encode(),
             hashlib.sha256,
         ).hexdigest()
