@@ -21,6 +21,10 @@ _✨ 米游社大别野Bot Python SDK ✨_
 
 </div>
 
+# 重要通知
+
+因作者时间和精力问题，本 SDK 将暂停更新，**强烈建议**使用 [NoneBot2](https://github.com/nonebot/nonebot2)+ [nonebot-adapter-villa](https://github.com/CMHopeSunshine/nonebot-adapter-villa) 来开发大别野 Bot，NoneBot 有着丰富的功能和生态，以及完善的文档和众多插件供学习，对大别野的支持也是最新的，强烈建议各位开发者使用 NoneBot 替换本 SDK。
+
 ## 特性
 
 - 基于`FastAPI`和`Pydantic`，异步优先、快速、高性能！
